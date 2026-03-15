@@ -1430,25 +1430,84 @@ body.dark-mode .dark-toggle-row { background:#1e2d45; }
     <div id="goals-list"></div>
   </div>
 
-  <!-- AI SCHEDULER PAGE (Pro) -->
+  <!-- AI SCHEDULER PAGE (fully working) -->
   <div class="page" id="page-ai">
     <div class="page-header">
-      <div><div class="page-title">AI Study Scheduler</div><div class="page-subtitle">Let AI build your perfect daily study plan</div></div>
+      <div><div class="page-title">AI Study Scheduler ✨</div><div class="page-subtitle">Paste your OpenAI key and get a personalised study plan in seconds</div></div>
     </div>
-    <div class="pro-gate-banner">
-      <div class="pgb-icon">✨</div>
-      <div class="pgb-title">Your personal AI study planner</div>
-      <div class="pgb-text">Connect an OpenAI API key and StudyFlow will analyse your subjects, topics, estimated hours and exam dates — then automatically generate a day-by-day study schedule that gets you exam-ready without burning out.</div>
-      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-        <button class="plan-btn plan-btn-pro" style="width:auto;padding:11px 28px;" onclick="openCheckout('pro')">Upgrade to Pro to unlock →</button>
+
+    <!-- Key input card -->
+    <div class="card" id="ai-key-card" style="margin-bottom:24px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+        <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#4f8ef7,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">🔑</div>
+        <div>
+          <div style="font-weight:700;font-size:.95rem;">Connect your OpenAI API key</div>
+          <div style="font-size:.8rem;color:var(--text-muted);margin-top:2px;">Your key is only used in your browser — it's never stored or sent anywhere except directly to OpenAI.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <input type="password" id="ai-key-input" placeholder="sk-proj-..." style="flex:1;min-width:200px;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:.9rem;background:var(--bg);color:var(--text);font-family:var(--font);" />
+        <button class="btn btn-primary" onclick="saveAIKey()" style="white-space:nowrap;">Save key</button>
+      </div>
+      <div id="ai-key-status" style="margin-top:10px;font-size:.8rem;min-height:18px;"></div>
+      <div style="margin-top:12px;padding:10px 14px;background:rgba(79,142,247,.08);border-radius:var(--radius-sm);border:1px solid rgba(79,142,247,.2);font-size:.78rem;color:var(--text-muted);line-height:1.6;">
+        💡 Get a free key at <a href="https://platform.openai.com/api-keys" target="_blank" style="color:var(--blue);">platform.openai.com/api-keys</a> — new accounts get $5 free credit, enough for thousands of study plans.
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;opacity:.45;">
-      <div class="card"><div style="font-size:1.5rem;margin-bottom:8px;">🗓️</div><div style="font-weight:700;margin-bottom:4px;">Daily plans</div><div style="font-size:.83rem;color:var(--text-muted);">Wakes up each morning with a fresh study plan based on what's due.</div></div>
-      <div class="card"><div style="font-size:1.5rem;margin-bottom:8px;">⚖️</div><div style="font-weight:700;margin-bottom:4px;">Balanced load</div><div style="font-size:.83rem;color:var(--text-muted);">Spreads your workload evenly so you never cram the night before.</div></div>
-      <div class="card"><div style="font-size:1.5rem;margin-bottom:8px;">🎯</div><div style="font-weight:700;margin-bottom:4px;">Prioritises gaps</div><div style="font-size:.83rem;color:var(--text-muted);">Spots which topics need the most work and puts them front of queue.</div></div>
-      <div class="card"><div style="font-size:1.5rem;margin-bottom:8px;">📅</div><div style="font-weight:700;margin-bottom:4px;">Exam aware</div><div style="font-size:.83rem;color:var(--text-muted);">Ramps up intensity as exam dates approach — automatically.</div></div>
+
+    <!-- Options card -->
+    <div class="card" style="margin-bottom:24px;">
+      <div style="font-weight:700;font-size:.95rem;margin-bottom:16px;">⚙️ Plan settings</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
+        <div class="field" style="margin:0;">
+          <label>Study days per week</label>
+          <select id="ai-days-per-week">
+            <option value="3">3 days</option>
+            <option value="4">4 days</option>
+            <option value="5" selected>5 days</option>
+            <option value="6">6 days</option>
+            <option value="7">7 days</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0;">
+          <label>Hours per study day</label>
+          <select id="ai-hours-per-day">
+            <option value="1">1 hour</option>
+            <option value="2" selected>2 hours</option>
+            <option value="3">3 hours</option>
+            <option value="4">4 hours</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0;">
+          <label>Plan length</label>
+          <select id="ai-plan-length">
+            <option value="1 week">1 week</option>
+            <option value="2 weeks" selected>2 weeks</option>
+            <option value="4 weeks">4 weeks</option>
+            <option value="until my exams">Until my exams</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0;">
+          <label>Focus style</label>
+          <select id="ai-focus-style">
+            <option value="balanced">Balanced across subjects</option>
+            <option value="weakest first">Weakest topics first</option>
+            <option value="exam priority">Prioritise by exam date</option>
+          </select>
+        </div>
+      </div>
     </div>
+
+    <!-- Generate button -->
+    <div style="margin-bottom:28px;">
+      <button class="btn btn-primary" id="ai-generate-btn" onclick="generateStudyPlan()" style="padding:13px 32px;font-size:.95rem;gap:8px;">
+        ✨ Generate my study plan
+      </button>
+      <span style="font-size:.8rem;color:var(--text-muted);margin-left:14px;" id="ai-data-summary"></span>
+    </div>
+
+    <!-- Output area -->
+    <div id="ai-output"></div>
   </div>
 
   <!-- STUDY GROUPS PAGE (Pro) -->
@@ -1789,6 +1848,195 @@ function openCheckout(plan) {
 }
 
 /* ============================================================
+   AI STUDY SCHEDULER
+   ============================================================ */
+
+function saveAIKey() {
+  const key = document.getElementById('ai-key-input').value.trim();
+  const status = document.getElementById('ai-key-status');
+  if (!key.startsWith('sk-')) {
+    status.innerHTML = '<span style="color:var(--red);">⚠️ That doesn\'t look right — it should start with sk-</span>';
+    return;
+  }
+  sessionStorage.setItem('sf_openai_key', key);
+  document.getElementById('ai-key-input').value = '';
+  status.innerHTML = '<span style="color:var(--green);">✅ Key saved for this session — cleared automatically when you close the tab.</span>';
+  updateAIDataSummary();
+}
+
+function getAIKey() { return sessionStorage.getItem('sf_openai_key') || ''; }
+
+function updateAIDataSummary() {
+  const el = document.getElementById('ai-data-summary');
+  if (!el) return;
+  const pending  = topics.filter(t => t.status !== 'completed');
+  const today    = new Date(); today.setHours(0,0,0,0);
+  const upcoming = exams.filter(e => new Date(e.date) >= today);
+  el.textContent = `Using ${subjects.length} subject${subjects.length!==1?'s':''}, ${pending.length} pending topic${pending.length!==1?'s':''}, ${upcoming.length} upcoming exam${upcoming.length!==1?'s':''}`;
+}
+
+function buildPrompt() {
+  const daysPerWeek = document.getElementById('ai-days-per-week').value;
+  const hoursPerDay = document.getElementById('ai-hours-per-day').value;
+  const planLength  = document.getElementById('ai-plan-length').value;
+  const focusStyle  = document.getElementById('ai-focus-style').value;
+  const today       = new Date();
+  const todayStr    = today.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+  const subjectSummary = subjects.map(s => {
+    const subTopics  = topics.filter(t => t.subjectId === s.id);
+    const pending    = subTopics.filter(t => t.status !== 'completed');
+    const done       = subTopics.filter(t => t.status === 'completed');
+    const totalHours = pending.reduce((a,t) => a+(t.hours||1), 0);
+    const subExams   = exams.filter(e => e.subjectId===s.id && new Date(e.date)>=today)
+      .map(e => `${e.name} on ${e.date}`).join(', ');
+    return `Subject: ${s.name}
+  - Pending topics (${pending.length}): ${pending.map(t=>`${t.name} (~${t.hours||1}h)`).join(', ')||'none'}
+  - Completed (${done.length}): ${done.map(t=>t.name).join(', ')||'none'}
+  - Hours remaining: ~${totalHours}h
+  - Upcoming exams: ${subExams||'none'}`;
+  }).join('\n\n');
+
+  return `You are an expert academic study planner. Today is ${todayStr}.
+
+Student's study data:
+${subjectSummary}
+
+Plan preferences:
+- Study days per week: ${daysPerWeek}
+- Hours per day: ${hoursPerDay}
+- Plan length: ${planLength}
+- Focus style: ${focusStyle}
+
+Instructions:
+1. Create a day-by-day schedule starting tomorrow
+2. Each day lists specific topics with estimated time
+3. Only include pending topics — skip completed ones
+4. Rotate subjects so the same one isn't repeated every day
+5. Ramp up intensity the week before each exam
+6. Keep the tone warm and encouraging
+7. Use EXACTLY this format for each day:
+
+DAY 1 - [DD/MM/YYYY] - [Day name]
+• [Subject]: [Topic] — [X mins]
+• [Subject]: [Topic] — [X mins]
+Total: [X hours X mins]
+
+End with 2-3 sentences of motivation.`;
+}
+
+async function generateStudyPlan() {
+  const key = getAIKey();
+  if (!key) { toast('Save your OpenAI key first ↑', 'err'); document.getElementById('ai-key-input').focus(); return; }
+  if (!subjects.length) { toast('Add some subjects and topics first!', 'err'); return; }
+
+  const btn    = document.getElementById('ai-generate-btn');
+  const output = document.getElementById('ai-output');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle;"></span>Generating…';
+  output.innerHTML = `<div class="card" style="text-align:center;padding:48px 24px;">
+    <div style="font-size:2.5rem;margin-bottom:14px;">✨</div>
+    <div style="font-weight:700;font-size:1.05rem;margin-bottom:8px;">Analysing your subjects and exams…</div>
+    <div style="font-size:.85rem;color:var(--text-muted);">Usually takes 5–15 seconds</div>
+  </div>`;
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${key}` },
+      body: JSON.stringify({
+        model:'gpt-4o-mini', max_tokens:2000, temperature:0.7,
+        messages:[
+          { role:'system', content:"You are StudyFlow's AI study planner. Create clear, actionable, encouraging study schedules. Always follow the exact format given." },
+          { role:'user',   content:buildPrompt() }
+        ]
+      })
+    });
+    if (!res.ok) { const e=await res.json(); throw new Error(e.error?.message||`Error ${res.status}`); }
+    const data = await res.json();
+    renderAIPlan(data.choices[0].message.content);
+    toast('Study plan ready! 🎉', 'ok');
+  } catch(err) {
+    let msg = err.message;
+    if (msg.includes('401')||msg.includes('Incorrect API key')) msg='Invalid API key — check and re-save it.';
+    else if (msg.includes('429')) msg='Rate limit — wait a moment and try again.';
+    else if (msg.includes('quota')) msg='Your OpenAI credit has run out. Top up at platform.openai.com.';
+    output.innerHTML = `<div class="card" style="border:1.5px solid var(--red);padding:24px;">
+      <div style="font-size:1.2rem;margin-bottom:8px;">⚠️</div>
+      <div style="font-weight:700;color:var(--red);margin-bottom:6px;">Something went wrong</div>
+      <div style="font-size:.85rem;color:var(--text-muted);">${esc(msg)}</div>
+    </div>`;
+    toast(msg, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '✨ Generate my study plan';
+  }
+}
+
+function renderAIPlan(text) {
+  const output = document.getElementById('ai-output');
+  const colors = ['#4f8ef7','#10b981','#f59e0b','#8b5cf6','#ef4444','#14b8a6'];
+  const days   = text.split(/(?=DAY \d+ -)/).filter(d => d.trim().startsWith('DAY'));
+
+  if (days.length > 0) {
+    let html = '<div style="display:flex;flex-direction:column;gap:14px;">';
+    days.forEach((day, i) => {
+      const lines  = day.trim().split('\n');
+      const header = lines[0].replace(/^DAY \d+ - /,'');
+      const items  = lines.slice(1).filter(l => l.trim().startsWith('•'));
+      const total  = lines.find(l => l.toLowerCase().startsWith('total'));
+      const color  = colors[i % colors.length];
+      html += `<div class="card" style="border-left:4px solid ${color};padding:18px 22px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <div style="font-weight:700;font-size:.95rem;">📅 ${esc(header)}</div>
+          ${total?`<span style="font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:999px;background:${color}22;color:${color};">${esc(total.replace(/total:/i,'').trim())}</span>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          ${items.map(item => {
+            const clean = item.replace('•','').trim();
+            const parts = clean.split('—');
+            return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:8px;gap:10px;">
+              <span style="font-size:.87rem;">${esc(parts[0]?.trim()||clean)}</span>
+              ${parts[1]?`<span style="font-size:.75rem;font-weight:600;color:var(--text-muted);flex-shrink:0;">${esc(parts[1].trim())}</span>`:''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    });
+
+    // Motivational summary (text after last day block)
+    const afterDays = text.split(/DAY \d+ -[^\n]+\n/).pop()?.trim() || '';
+    const summary   = afterDays.split('\n').filter(l => !l.startsWith('•') && !l.toLowerCase().startsWith('total') && l.trim()).join(' ');
+    if (summary) {
+      html += `<div class="card" style="background:linear-gradient(135deg,rgba(79,142,247,.1),rgba(139,92,246,.1));border:1.5px solid rgba(79,142,247,.25);text-align:center;padding:24px;">
+        <div style="font-size:1.5rem;margin-bottom:8px;">🌟</div>
+        <div style="font-size:.9rem;line-height:1.7;">${esc(summary)}</div>
+      </div>`;
+    }
+
+    html += `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+      <button class="btn btn-primary" onclick="generateStudyPlan()" style="font-size:.83rem;">↺ Regenerate plan</button>
+      <button class="btn btn-ghost" onclick="copyPlan()" style="font-size:.83rem;">📋 Copy to clipboard</button>
+    </div></div>`;
+    output.innerHTML = html;
+  } else {
+    output.innerHTML = `<div class="card" style="white-space:pre-wrap;font-size:.88rem;line-height:1.8;">${esc(text)}</div>
+    <div style="margin-top:14px;display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="generateStudyPlan()">↺ Regenerate</button>
+      <button class="btn btn-ghost" onclick="copyPlan()">📋 Copy</button>
+    </div>`;
+  }
+  output.dataset.planText = text;
+}
+
+function copyPlan() {
+  const text = document.getElementById('ai-output')?.dataset?.planText || '';
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard 📋', 'ok'));
+}
+
+/* ============================================================
    PRO PAGE GATING
    ============================================================ */
 function goToProPage(page) {
@@ -1803,6 +2051,7 @@ function goToProPage(page) {
   // Render the page content
   if (page==='analytics') renderAnalytics();
   if (page==='goals')     renderGoals();
+  if (page==='ai')        updateAIDataSummary();
 }
 
 /* ============================================================
@@ -2351,7 +2600,10 @@ window.editExam        = editExam;
 window.deleteExam      = deleteExam;
 window.setTopicFilter  = setTopicFilter;
 
-window.goToProPage     = goToProPage;
+window.saveAIKey         = saveAIKey;
+window.generateStudyPlan = generateStudyPlan;
+window.copyPlan          = copyPlan;
+window.goToProPage       = goToProPage;
 window.toggleDarkMode  = toggleDarkMode;
 window.deleteGoal      = deleteGoal;
 
