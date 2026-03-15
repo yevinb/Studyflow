@@ -1,0 +1,1921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>StudyFlow — Study Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,500&display=swap" rel="stylesheet">
+<!-- PayPal SDK — loaded upfront so buttons are always ready -->
+<script src="https://www.paypal.com/sdk/js?client-id=AbBbdt1ND8Cmc9B-xPcfz3j9L6fOGrSb6sbOww6bd8Yt-Iq2OFUSOFGtFDsfy3Dnu-BbzsVrxG6SvSv5&currency=GBP&intent=capture" onerror="console.error('PayPal SDK failed to load — check your Client ID or network connection.')"></script>
+
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  --bg:           #0f1e3d;
+  --card:         #ffffff;
+  --sidebar-bg:   #ffffff;
+  --sidebar-txt:  #64748b;
+  --blue:         #4f8ef7;
+  --blue-d:       #2563eb;
+  --blue-light:   #dbeafe;
+  --green:        #10b981;
+  --green-light:  #d1fae5;
+  --yellow:       #f59e0b;
+  --yellow-light: #fef3c7;
+  --red:          #ef4444;
+  --red-light:    #fee2e2;
+  --purple:       #8b5cf6;
+  --purple-light: #ede9fe;
+  --teal:         #14b8a6;
+  --teal-light:   #ccfbf1;
+  --text:         #0f172a;
+  --text-muted:   #64748b;
+  --border:       #e2e8f0;
+  --radius:       14px;
+  --radius-sm:    8px;
+  --shadow:       0 2px 16px rgba(15,23,42,0.07);
+  --shadow-md:    0 6px 32px rgba(15,23,42,0.12);
+  --font:         'Sora', sans-serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --sidebar-w:    256px;
+}
+
+/* ============================================================
+   RESET
+   ============================================================ */
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior:smooth; }
+body { font-family:var(--font); background:var(--bg); color:var(--text); min-height:100vh; line-height:1.6; }
+ul { list-style:none; }
+button { cursor:pointer; font-family:var(--font); border:none; }
+input, select { font-family:var(--font); outline:none; }
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+.sidebar {
+  position:fixed; top:0; left:0;
+  width:var(--sidebar-w); height:100vh;
+  background:var(--sidebar-bg);
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column;
+  padding:24px 14px 20px;
+  z-index:200;
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
+  overflow-y:auto;
+}
+.logo { display:flex; align-items:center; gap:11px; padding:4px 10px 0; margin-bottom:32px; }
+.logo-icon {
+  width:38px; height:38px; border-radius:11px;
+  background:linear-gradient(135deg,#4f8ef7,#8b5cf6);
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.15rem; flex-shrink:0;
+  box-shadow:0 4px 14px rgba(79,142,247,0.4);
+}
+.logo-name { font-family:var(--font-display); font-size:1.35rem; color:#0f172a; }
+.logo-name span { color:#4f8ef7; }
+.nav-label {
+  font-size:.63rem; font-weight:600; letter-spacing:.1em;
+  text-transform:uppercase; color:#94a3b8;
+  padding:0 12px; margin:8px 0 6px;
+}
+.nav-item {
+  display:flex; align-items:center; gap:11px;
+  padding:10px 12px; border-radius:10px;
+  color:var(--sidebar-txt);
+  font-size:.875rem; font-weight:500;
+  margin-bottom:2px; cursor:pointer;
+  transition:all .18s; border:none;
+  background:transparent; width:100%; text-align:left;
+}
+.nav-item:hover { background:#f1f5f9; color:#0f172a; }
+.nav-item.active { background:var(--blue-light); color:var(--blue-d); font-weight:600; }
+.nav-item.active .nav-icon { color:var(--blue); }
+.nav-icon { font-size:1.05rem; width:20px; text-align:center; flex-shrink:0; }
+.sidebar-bottom { margin-top:auto; padding-top:16px; border-top:1px solid var(--border); }
+.sidebar-user {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:10px;
+  background:#f8fafc;
+}
+.user-ava {
+  width:32px; height:32px; border-radius:50%;
+  background:linear-gradient(135deg,#4f8ef7,#8b5cf6);
+  display:flex; align-items:center; justify-content:center;
+  font-size:.75rem; font-weight:700; color:#fff; flex-shrink:0;
+}
+.user-name { font-size:.8rem; font-weight:600; color:#1e293b; }
+.user-role { font-size:.7rem; color:#94a3b8; }
+
+/* ============================================================
+   MAIN
+   ============================================================ */
+.main { margin-left:var(--sidebar-w); min-height:100vh; padding:32px 36px; }
+.page { display:none; animation:fadeUp .3s ease; }
+.page.active { display:block; }
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ============================================================
+   PAGE HEADER
+   ============================================================ */
+.page-header {
+  display:flex; align-items:flex-start;
+  justify-content:space-between; flex-wrap:wrap; gap:14px;
+  margin-bottom:28px;
+}
+.page-title { font-family:var(--font-display); font-size:2rem; line-height:1.15; color:#ffffff; }
+.page-subtitle { font-size:.875rem; color:rgba(255,255,255,0.6); margin-top:3px; }
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:9px 18px; border-radius:var(--radius-sm);
+  font-size:.85rem; font-weight:600; border:none;
+  transition:all .18s; cursor:pointer;
+}
+.btn-primary { background:var(--blue); color:#fff; box-shadow:0 2px 10px rgba(79,142,247,.35); }
+.btn-primary:hover { background:var(--blue-d); transform:translateY(-1px); box-shadow:0 4px 16px rgba(79,142,247,.45); }
+.btn-ghost { background:var(--card); color:var(--text-muted); border:1.5px solid var(--border); }
+.btn-ghost:hover { border-color:var(--blue); color:var(--blue); }
+.btn-danger { background:var(--red-light); color:#b91c1c; }
+.btn-danger:hover { background:var(--red); color:#fff; }
+.btn-sm { padding:5px 12px; font-size:.775rem; border-radius:6px; }
+.btn-icon { width:30px; height:30px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:7px; font-size:.85rem; }
+
+/* ============================================================
+   CARDS + GRIDS
+   ============================================================ */
+.card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); border:1px solid var(--border); padding:20px 24px; }
+.grid-4 { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
+.grid-3 { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+.grid-2 { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }
+
+/* ============================================================
+   STAT CARDS
+   ============================================================ */
+.stat-card {
+  background:var(--card); border-radius:var(--radius);
+  border:1px solid var(--border); box-shadow:var(--shadow);
+  padding:18px 20px; position:relative; overflow:hidden;
+  transition:transform .18s, box-shadow .18s;
+}
+.stat-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); }
+.stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+.stat-card.c-blue::before   { background:linear-gradient(90deg,#4f8ef7,#818cf8); }
+.stat-card.c-green::before  { background:linear-gradient(90deg,#10b981,#34d399); }
+.stat-card.c-yellow::before { background:linear-gradient(90deg,#f59e0b,#fbbf24); }
+.stat-card.c-red::before    { background:linear-gradient(90deg,#ef4444,#f87171); }
+.stat-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; margin-bottom:12px; }
+.stat-icon.c-blue   { background:var(--blue-light); }
+.stat-icon.c-green  { background:var(--green-light); }
+.stat-icon.c-yellow { background:var(--yellow-light); }
+.stat-icon.c-red    { background:var(--red-light); }
+.stat-label { font-size:.75rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; }
+.stat-value { font-family:var(--font-display); font-size:2.1rem; line-height:1.1; margin-top:2px; }
+.stat-sub   { font-size:.75rem; color:var(--text-muted); margin-top:4px; }
+
+/* ============================================================
+   PROGRESS
+   ============================================================ */
+.progress-wrap { margin-bottom:28px; }
+.progress-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.progress-title { font-weight:600; font-size:.95rem; }
+.progress-pct { font-weight:700; font-size:.95rem; color:var(--blue); }
+.progress-track { height:10px; background:#e8edf5; border-radius:999px; overflow:hidden; }
+.progress-fill {
+  height:100%; background:linear-gradient(90deg,var(--blue),var(--green));
+  border-radius:999px; transition:width .6s cubic-bezier(.4,0,.2,1);
+}
+.mini-track { height:6px; background:#e8edf5; border-radius:999px; overflow:hidden; margin-top:8px; }
+.mini-fill  { height:100%; border-radius:999px; transition:width .5s ease; }
+
+/* ============================================================
+   SECTION HEADING
+   ============================================================ */
+.section-heading {
+  font-weight:700; font-size:.9rem; color:var(--text-muted);
+  text-transform:uppercase; letter-spacing:.06em;
+  margin-bottom:12px; display:flex; align-items:center; gap:8px;
+}
+.section-heading::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* ============================================================
+   TASK ITEMS (dashboard)
+   ============================================================ */
+.task-item {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 14px; background:var(--card);
+  border:1.5px solid var(--border); border-radius:10px;
+  margin-bottom:8px; transition:border-color .15s, box-shadow .15s; cursor:pointer;
+}
+.task-item:hover { border-color:var(--blue); box-shadow:0 0 0 3px rgba(79,142,247,.08); }
+.task-check {
+  width:20px; height:20px; border:2px solid var(--border);
+  border-radius:6px; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; cursor:pointer; transition:all .18s; background:#fff;
+}
+.task-check.on { background:var(--green); border-color:var(--green); color:#fff; }
+.task-check.on::after { content:'✓'; font-size:.7rem; font-weight:700; }
+.task-name { flex:1; font-size:.88rem; font-weight:500; }
+.task-name.done { text-decoration:line-through; color:var(--text-muted); }
+
+/* ============================================================
+   TAGS
+   ============================================================ */
+.tag { display:inline-flex; align-items:center; padding:3px 9px; border-radius:999px; font-size:.72rem; font-weight:600; flex-shrink:0; }
+.tag-blue   { background:var(--blue-light);   color:#1d4ed8; }
+.tag-green  { background:var(--green-light);  color:#065f46; }
+.tag-yellow { background:var(--yellow-light); color:#92400e; }
+.tag-red    { background:var(--red-light);    color:#991b1b; }
+.tag-purple { background:var(--purple-light); color:#5b21b6; }
+.tag-teal   { background:var(--teal-light);   color:#134e4a; }
+
+/* ============================================================
+   SUBJECT CARDS
+   ============================================================ */
+.subject-card {
+  background:var(--card); border:1.5px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;
+  transition:transform .18s, box-shadow .18s;
+}
+.subject-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-md); }
+.subject-card-top { padding:18px 20px 14px; position:relative; }
+.sc-blue   .subject-card-top { background:linear-gradient(135deg,#dbeafe,#ede9fe); }
+.sc-green  .subject-card-top { background:linear-gradient(135deg,#d1fae5,#dbeafe); }
+.sc-yellow .subject-card-top { background:linear-gradient(135deg,#fef3c7,#d1fae5); }
+.sc-red    .subject-card-top { background:linear-gradient(135deg,#fee2e2,#fef3c7); }
+.sc-purple .subject-card-top { background:linear-gradient(135deg,#ede9fe,#dbeafe); }
+.sc-teal   .subject-card-top { background:linear-gradient(135deg,#ccfbf1,#d1fae5); }
+.subject-actions { display:flex; gap:5px; position:absolute; top:12px; right:12px; }
+.subject-emoji { font-size:1.8rem; margin-bottom:6px; }
+.subject-name  { font-weight:700; font-size:1rem; }
+.subject-card-bot { padding:12px 20px 16px; border-top:1px solid var(--border); background:#fafbff; }
+.subject-meta { display:flex; gap:12px; font-size:.78rem; color:var(--text-muted); }
+
+/* ============================================================
+   TOPIC ROWS
+   ============================================================ */
+.topic-group { margin-bottom:28px; }
+.topic-group-title {
+  font-weight:700; font-size:.82rem; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--text-muted); margin-bottom:10px;
+  display:flex; align-items:center; gap:8px;
+}
+.topic-group-title::after { content:''; flex:1; height:1px; background:var(--border); }
+.topic-row {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 16px; background:var(--card);
+  border:1.5px solid var(--border); border-radius:10px;
+  margin-bottom:7px; transition:all .15s;
+}
+.topic-row:hover { border-color:var(--blue); box-shadow:0 0 0 3px rgba(79,142,247,.07); }
+.topic-row.completed { opacity:.55; }
+.topic-check {
+  width:20px; height:20px; border:2px solid var(--border);
+  border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all .18s; background:#fff;
+}
+.topic-check.on { background:var(--green); border-color:var(--green); color:#fff; }
+.topic-check.on::after { content:'✓'; font-size:.65rem; font-weight:700; }
+.topic-info { flex:1; min-width:0; }
+.topic-name  { font-size:.9rem; font-weight:500; }
+.topic-name.done { text-decoration:line-through; color:var(--text-muted); }
+.topic-hours { font-size:.74rem; color:var(--text-muted); margin-top:1px; }
+.topic-actions { display:flex; gap:5px; }
+
+/* ============================================================
+   EXAM CARDS
+   ============================================================ */
+.exam-card {
+  background:var(--card); border:1.5px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow);
+  padding:16px 20px; display:flex; align-items:center; gap:16px;
+  transition:transform .18s, box-shadow .18s;
+}
+.exam-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); }
+.exam-card.past  { opacity:.5; filter:grayscale(.4); }
+.exam-date-box { min-width:54px; text-align:center; padding:8px 10px; border-radius:10px; background:var(--yellow-light); border:1.5px solid #fde68a; flex-shrink:0; }
+.exam-day { font-family:var(--font-display); font-size:1.6rem; line-height:1; }
+.exam-mon { font-size:.65rem; text-transform:uppercase; letter-spacing:.07em; color:var(--text-muted); margin-top:1px; }
+.exam-info { flex:1; min-width:0; }
+.exam-name { font-weight:600; font-size:.95rem; }
+.exam-subject { font-size:.78rem; color:var(--text-muted); margin-top:2px; }
+.exam-actions { display:flex; gap:6px; align-items:center; }
+.countdown { font-size:.72rem; font-weight:700; padding:4px 10px; border-radius:999px; }
+.cd-soon { background:#fee2e2; color:#b91c1c; }
+.cd-near { background:var(--yellow-light); color:#92400e; }
+.cd-far  { background:var(--green-light);  color:#065f46; }
+.cd-past { background:#f1f5f9; color:var(--text-muted); }
+
+/* ============================================================
+   AI BANNER
+   ============================================================ */
+.ai-banner {
+  border:1.5px dashed #a78bfa;
+  background:linear-gradient(135deg,#f5f3ff,#eef2ff);
+  border-radius:var(--radius); padding:16px 22px;
+  display:flex; align-items:center; gap:16px; margin-bottom:28px;
+}
+.ai-emoji { font-size:2rem; }
+.ai-body  { flex:1; }
+.ai-title { font-weight:700; font-size:.9rem; color:#5b21b6; }
+.ai-desc  { font-size:.8rem; color:#6d28d9; margin-top:2px; }
+.btn-ai { padding:8px 16px; background:#7c3aed; color:#fff; border-radius:8px; font-size:.8rem; font-weight:600; opacity:.7; cursor:not-allowed; border:none; font-family:var(--font); }
+
+/* ============================================================
+   FILTER PILLS
+   ============================================================ */
+.filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px; }
+.filter-btn {
+  padding:7px 16px; border-radius:999px; font-size:.8rem; font-weight:600;
+  border:1.5px solid var(--border); background:var(--card); color:var(--text-muted);
+  cursor:pointer; transition:all .15s;
+}
+.filter-btn:hover { border-color:var(--blue); color:var(--blue); }
+.filter-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+.modal-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(10,15,40,.5); backdrop-filter:blur(4px);
+  z-index:400; align-items:center; justify-content:center; padding:16px;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background:var(--card); border-radius:20px;
+  width:100%; max-width:460px;
+  box-shadow:0 24px 64px rgba(0,0,0,.22);
+  animation:modalIn .22s cubic-bezier(.34,1.56,.64,1); overflow:hidden;
+}
+@keyframes modalIn {
+  from { opacity:0; transform:scale(.92) translateY(20px); }
+  to   { opacity:1; transform:scale(1) translateY(0); }
+}
+.modal-header { padding:20px 24px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.modal-title  { font-family:var(--font-display); font-size:1.3rem; }
+.modal-close  { width:30px; height:30px; border-radius:50%; border:none; background:#f1f5f9; color:var(--text-muted); font-size:1rem; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+.modal-close:hover { background:var(--red-light); color:var(--red); }
+.modal-body { padding:22px 24px 26px; }
+.modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:22px; }
+.field { margin-bottom:16px; }
+.field label { display:block; font-size:.75rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+.field input, .field select { width:100%; padding:11px 14px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:.9rem; background:#fafbff; color:var(--text); transition:border-color .18s; appearance:none; }
+.field input:focus, .field select:focus { border-color:var(--blue); background:#fff; }
+.field select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%2364748b' d='M1 1l5 5 5-5'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:36px; }
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+.empty { text-align:center; padding:52px 24px; color:var(--text-muted); }
+.empty-icon { font-size:3.2rem; margin-bottom:12px; }
+.empty-text { font-size:.9rem; }
+.empty-sub  { font-size:.8rem; color:#94a3b8; margin-top:4px; }
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+#toast {
+  position:fixed; bottom:26px; right:26px;
+  background:var(--text); color:#fff;
+  padding:12px 20px; border-radius:10px;
+  font-size:.85rem; font-weight:500; z-index:999;
+  transform:translateY(60px); opacity:0;
+  transition:all .28s cubic-bezier(.4,0,.2,1);
+  max-width:300px; box-shadow:0 6px 24px rgba(0,0,0,.2);
+}
+#toast.show { transform:translateY(0); opacity:1; }
+#toast.ok  { background:var(--green); }
+#toast.err { background:var(--red); }
+
+/* ============================================================
+   HAMBURGER + VEIL
+   ============================================================ */
+.hamburger { display:none; position:fixed; top:14px; left:14px; z-index:300; width:40px; height:40px; border-radius:10px; border:1.5px solid var(--border); background:var(--card); box-shadow:var(--shadow); font-size:1.15rem; align-items:center; justify-content:center; }
+.sidebar-veil { display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:190; }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media(max-width:900px){
+  .sidebar { transform:translateX(-110%); }
+  .sidebar.open { transform:translateX(0); box-shadow:4px 0 24px rgba(0,0,0,.2); }
+  .sidebar-veil.open { display:block; }
+  .hamburger { display:flex; }
+  .main { margin-left:0; padding:20px 16px; padding-top:66px; }
+  .grid-4 { grid-template-columns:repeat(2,1fr); }
+}
+@media(max-width:600px){
+  .grid-3, .grid-2 { grid-template-columns:1fr; }
+  .page-title { font-size:1.6rem; }
+  .exam-card { flex-wrap:wrap; }
+  #dash-2col { grid-template-columns:1fr !important; }
+}
+/* ============================================================
+   UPGRADE NUDGE BANNER (dashboard)
+   ============================================================ */
+.upgrade-nudge {
+  margin-top:28px;
+  background:linear-gradient(135deg,#1e3a5f,#1a2d50);
+  border:1.5px solid rgba(79,142,247,.35);
+  border-radius:var(--radius);
+  padding:18px 24px;
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  cursor:pointer;
+  transition:border-color .2s, box-shadow .2s;
+  flex-wrap:wrap;
+}
+.upgrade-nudge:hover { border-color:var(--blue); box-shadow:0 0 0 3px rgba(79,142,247,.15); }
+.upgrade-nudge-left { display:flex; align-items:center; gap:14px; }
+.upgrade-nudge-icon { font-size:1.6rem; flex-shrink:0; }
+.upgrade-nudge-title { font-weight:700; font-size:.92rem; color:#fff; }
+.upgrade-nudge-sub   { font-size:.8rem; color:rgba(255,255,255,.6); margin-top:2px; }
+.btn-upgrade-nudge {
+  padding:10px 22px; background:var(--blue); color:#fff;
+  border-radius:var(--radius-sm); font-size:.85rem; font-weight:700;
+  border:none; font-family:var(--font); cursor:pointer;
+  transition:background .18s; white-space:nowrap;
+}
+.btn-upgrade-nudge:hover { background:var(--blue-d); }
+
+/* ============================================================
+   PRICING PAGE
+   ============================================================ */
+.billing-toggle-wrap {
+  display:flex; align-items:center; gap:12px;
+  margin-bottom:32px;
+}
+.billing-opt { font-size:.9rem; font-weight:600; color:rgba(255,255,255,.7); }
+.billing-toggle {
+  width:48px; height:26px; border-radius:999px;
+  background:#1e3a5f; border:2px solid rgba(79,142,247,.4);
+  position:relative; cursor:pointer; transition:background .2s;
+  flex-shrink:0;
+}
+.billing-toggle.on { background:var(--blue); border-color:var(--blue); }
+.billing-knob {
+  position:absolute; top:2px; left:2px;
+  width:18px; height:18px; border-radius:50%;
+  background:#fff; transition:transform .22s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 1px 4px rgba(0,0,0,.2);
+}
+.billing-toggle.on .billing-knob { transform:translateX(22px); }
+.save-badge {
+  background:var(--green); color:#fff;
+  font-size:.65rem; font-weight:700; padding:2px 7px;
+  border-radius:999px; margin-left:6px; vertical-align:middle;
+}
+
+.plans-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:20px;
+  margin-bottom:36px;
+  align-items:start;
+}
+
+.plan-card {
+  background:var(--card);
+  border:2px solid var(--border);
+  border-radius:20px;
+  padding:28px 26px;
+  position:relative;
+  transition:transform .2s, box-shadow .2s;
+}
+.plan-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-md); }
+
+.plan-card-pro {
+  border-color:var(--blue);
+  box-shadow:0 0 0 4px rgba(79,142,247,.12);
+}
+.plan-card-lifetime {
+  border-color:var(--yellow);
+  box-shadow:0 0 0 4px rgba(245,158,11,.1);
+}
+
+.plan-popular-badge {
+  position:absolute; top:-13px; left:50%; transform:translateX(-50%);
+  background:var(--blue); color:#fff;
+  font-size:.72rem; font-weight:700; padding:4px 14px;
+  border-radius:999px; white-space:nowrap;
+  box-shadow:0 2px 8px rgba(79,142,247,.4);
+}
+
+.plan-header { margin-bottom:20px; }
+.plan-icon { font-size:1.8rem; margin-bottom:8px; }
+.plan-name { font-family:var(--font-display); font-size:1.4rem; font-weight:700; margin-bottom:4px; }
+.plan-desc { font-size:.82rem; color:var(--text-muted); line-height:1.5; }
+
+.plan-price-wrap { margin-bottom:22px; padding-bottom:22px; border-bottom:1px solid var(--border); }
+.plan-price { font-family:var(--font-display); font-size:2.6rem; font-weight:700; line-height:1; }
+.plan-period { font-size:.8rem; color:var(--text-muted); margin-top:4px; }
+.plan-yearly-note { font-size:.76rem; color:var(--green); font-weight:600; margin-top:4px; }
+
+.plan-features { margin-bottom:24px; display:flex; flex-direction:column; gap:9px; }
+.feat {
+  display:flex; align-items:center; gap:9px;
+  font-size:.85rem;
+}
+.feat::before { content:''; width:18px; height:18px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:700; }
+.feat.yes { color:var(--text); }
+.feat.yes::before { content:'✓'; background:var(--green-light); color:var(--green); }
+.feat.no  { color:#94a3b8; }
+.feat.no::before  { content:'✕'; background:#f1f5f9; color:#cbd5e1; }
+
+.plan-btn {
+  width:100%; padding:13px;
+  border-radius:var(--radius-sm);
+  font-size:.9rem; font-weight:700;
+  border:none; font-family:var(--font);
+  cursor:pointer; transition:all .18s;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+}
+.plan-btn-ghost  { background:#f1f5f9; color:#94a3b8; cursor:default; }
+.plan-btn-pro    { background:var(--blue); color:#fff; box-shadow:0 2px 12px rgba(79,142,247,.35); }
+.plan-btn-pro:hover { background:var(--blue-d); transform:translateY(-1px); box-shadow:0 4px 20px rgba(79,142,247,.45); }
+.plan-btn-lifetime { background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; box-shadow:0 2px 12px rgba(245,158,11,.3); }
+.plan-btn-lifetime:hover { transform:translateY(-1px); box-shadow:0 4px 20px rgba(245,158,11,.4); }
+
+/* Pricing footer strip */
+.pricing-footer {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:12px;
+}
+.pf-item {
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:10px;
+  padding:12px 16px;
+  font-size:.82rem;
+  color:rgba(255,255,255,.7);
+}
+
+/* Checkout modal extras */
+.checkout-plan-summary {
+  display:flex; align-items:center; gap:14px;
+  padding:14px 18px;
+  background:var(--blue-light);
+  border-radius:var(--radius-sm);
+  border:1.5px solid var(--blue);
+  margin-bottom:20px;
+}
+.cps-icon { font-size:1.8rem; flex-shrink:0; }
+.cps-name  { font-weight:700; font-size:1rem; }
+.cps-price { font-size:.85rem; color:var(--blue-d); font-weight:600; margin-top:2px; }
+.checkout-stripe-note {
+  background:#f8fafc;
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:14px 16px;
+  margin-bottom:18px;
+}
+
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:3px; }
+
+/* ============================================================
+   LANDING PAGE
+   ============================================================ */
+#landing {
+  display:flex; flex-direction:column;
+  min-height:100vh;
+  background: #0b1629;
+  overflow:hidden;
+}
+/* Animated starfield dots */
+#landing::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 60%, rgba(255,255,255,.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 15%, rgba(255,255,255,.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 80% 75%, rgba(255,255,255,.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 50% 90%, rgba(255,255,255,.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 40%, rgba(255,255,255,.15) 0%, transparent 100%),
+    radial-gradient(2px 2px at 20% 85%, rgba(79,142,247,.4) 0%, transparent 100%),
+    radial-gradient(2px 2px at 75% 30%, rgba(139,92,246,.3) 0%, transparent 100%);
+  pointer-events:none; z-index:0;
+}
+.land-nav {
+  position:relative; z-index:10;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:22px 48px;
+}
+.land-logo { display:flex; align-items:center; gap:10px; }
+.land-logo-icon {
+  width:36px; height:36px; border-radius:10px;
+  background:linear-gradient(135deg,#4f8ef7,#8b5cf6);
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.1rem; box-shadow:0 4px 14px rgba(79,142,247,.4);
+}
+.land-logo-name { font-family:var(--font-display); font-size:1.3rem; color:#fff; }
+.land-logo-name span { color:#4f8ef7; }
+.land-nav-actions { display:flex; gap:10px; align-items:center; }
+.btn-land-ghost {
+  padding:9px 20px; border-radius:var(--radius-sm);
+  border:1.5px solid rgba(255,255,255,.2); background:transparent;
+  color:rgba(255,255,255,.8); font-size:.85rem; font-weight:600;
+  font-family:var(--font); cursor:pointer; transition:all .18s;
+}
+.btn-land-ghost:hover { border-color:rgba(255,255,255,.5); color:#fff; }
+.btn-land-primary {
+  padding:9px 22px; border-radius:var(--radius-sm);
+  background:var(--blue); color:#fff;
+  font-size:.85rem; font-weight:700; border:none;
+  font-family:var(--font); cursor:pointer;
+  box-shadow:0 2px 12px rgba(79,142,247,.4);
+  transition:all .18s;
+}
+.btn-land-primary:hover { background:var(--blue-d); transform:translateY(-1px); }
+
+/* Hero */
+.land-hero {
+  position:relative; z-index:10;
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  text-align:center;
+  padding:60px 24px 40px;
+}
+.land-kicker {
+  display:inline-flex; align-items:center; gap:7px;
+  background:rgba(79,142,247,.15); border:1px solid rgba(79,142,247,.3);
+  color:#93c5fd; font-size:.78rem; font-weight:600;
+  padding:5px 14px; border-radius:999px;
+  margin-bottom:24px; letter-spacing:.04em;
+}
+.land-headline {
+  font-family:var(--font-display);
+  font-size:clamp(2.2rem,5vw,3.8rem);
+  color:#fff; line-height:1.15;
+  max-width:780px; margin-bottom:20px;
+}
+.land-headline em { color:#4f8ef7; font-style:normal; }
+.land-sub {
+  font-size:1.05rem; color:rgba(255,255,255,.6);
+  max-width:520px; line-height:1.7; margin-bottom:36px;
+}
+.land-cta-row { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:56px; }
+.btn-land-cta {
+  padding:14px 32px; border-radius:10px;
+  background:linear-gradient(135deg,#4f8ef7,#2563eb);
+  color:#fff; font-size:1rem; font-weight:700; border:none;
+  font-family:var(--font); cursor:pointer;
+  box-shadow:0 4px 24px rgba(79,142,247,.5);
+  transition:all .2s;
+}
+.btn-land-cta:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(79,142,247,.6); }
+.btn-land-cta-sec {
+  padding:14px 28px; border-radius:10px;
+  border:1.5px solid rgba(255,255,255,.2); background:transparent;
+  color:rgba(255,255,255,.85); font-size:1rem; font-weight:600;
+  font-family:var(--font); cursor:pointer; transition:all .2s;
+}
+.btn-land-cta-sec:hover { border-color:rgba(255,255,255,.5); color:#fff; }
+
+/* Feature pills */
+.land-features {
+  display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+  margin-bottom:64px;
+}
+.land-feat-pill {
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);
+  color:rgba(255,255,255,.7);
+  font-size:.8rem; font-weight:500;
+  padding:8px 16px; border-radius:999px;
+  display:flex; align-items:center; gap:6px;
+}
+
+/* Social proof row */
+.land-social {
+  display:flex; align-items:center; gap:18px;
+  flex-wrap:wrap; justify-content:center;
+  padding:0 0 20px;
+}
+.land-avatars { display:flex; }
+.land-avatar {
+  width:32px; height:32px; border-radius:50%;
+  border:2px solid #0b1629; margin-left:-8px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.7rem; font-weight:700; color:#fff;
+}
+.land-social-text { font-size:.82rem; color:rgba(255,255,255,.55); }
+.land-social-text strong { color:rgba(255,255,255,.85); }
+.land-stars { color:#f59e0b; font-size:.9rem; letter-spacing:1px; }
+
+/* Pricing section on landing */
+.land-pricing-section {
+  position:relative; z-index:10;
+  padding:64px 48px;
+  background:rgba(255,255,255,.03);
+  border-top:1px solid rgba(255,255,255,.07);
+}
+.land-section-label {
+  text-align:center;
+  font-size:.75rem; font-weight:700; letter-spacing:.12em;
+  text-transform:uppercase; color:#4f8ef7; margin-bottom:10px;
+}
+.land-section-title {
+  font-family:var(--font-display); font-size:2rem;
+  color:#fff; text-align:center; margin-bottom:6px;
+}
+.land-section-sub {
+  text-align:center; color:rgba(255,255,255,.5);
+  font-size:.9rem; margin-bottom:40px;
+}
+
+/* Footer */
+.land-footer {
+  position:relative; z-index:10;
+  text-align:center; padding:28px 24px;
+  border-top:1px solid rgba(255,255,255,.07);
+  font-size:.78rem; color:rgba(255,255,255,.3);
+}
+
+/* ============================================================
+   PRO BADGE in sidebar
+   ============================================================ */
+.pro-badge-sidebar {
+  margin:0 0 8px;
+  padding:12px 14px;
+  border-radius:10px;
+  background:linear-gradient(135deg,rgba(79,142,247,.12),rgba(139,92,246,.12));
+  border:1px solid rgba(79,142,247,.25);
+  cursor:pointer;
+  transition:all .18s;
+}
+.pro-badge-sidebar:hover { border-color:var(--blue); }
+.pro-badge-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.pro-badge-label { font-size:.72rem; font-weight:700; color:var(--blue); text-transform:uppercase; letter-spacing:.05em; }
+.pro-badge-chip { font-size:.62rem; background:var(--blue); color:#fff; padding:2px 8px; border-radius:999px; font-weight:700; }
+.pro-badge-bar-track { height:5px; background:#e2e8f0; border-radius:999px; overflow:hidden; }
+.pro-badge-bar-fill { height:100%; background:linear-gradient(90deg,#4f8ef7,#8b5cf6); border-radius:999px; transition:width .4s; }
+.pro-badge-sub { font-size:.7rem; color:var(--text-muted); margin-top:5px; }
+
+/* ============================================================
+   UPGRADE WALL (shown when free limit hit)
+   ============================================================ */
+.upgrade-wall {
+  background:linear-gradient(135deg,#eef2ff,#f0fdf4);
+  border:2px dashed #a5b4fc;
+  border-radius:var(--radius);
+  padding:36px 28px;
+  text-align:center;
+  margin-top:20px;
+}
+.upgrade-wall-icon { font-size:2.5rem; margin-bottom:12px; }
+.upgrade-wall-title { font-family:var(--font-display); font-size:1.3rem; color:var(--text); margin-bottom:8px; }
+.upgrade-wall-text { font-size:.88rem; color:var(--text-muted); line-height:1.6; max-width:360px; margin:0 auto 20px; }
+
+@media(max-width:768px){
+  .land-nav { padding:18px 20px; }
+  .land-pricing-section { padding:40px 20px; }
+  .plans-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+<div class="sidebar-veil" id="veil" onclick="closeSidebar()"></div>
+<button class="hamburger" id="ham" onclick="openSidebar()">☰</button>
+
+<!-- ================================================================
+     LANDING PAGE
+     ================================================================ -->
+<div id="landing">
+
+  <!-- Nav -->
+  <nav class="land-nav">
+    <div class="land-logo">
+      <div class="land-logo-icon">📖</div>
+      <div class="land-logo-name">Study<span>Flow</span></div>
+    </div>
+    <div class="land-nav-actions">
+      <button class="btn-land-ghost" onclick="enterApp()">Log in</button>
+      <button class="btn-land-primary" onclick="enterApp()">Get started free</button>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <div class="land-hero">
+    <div class="land-kicker">✨ Free to start · No credit card needed</div>
+    <h1 class="land-headline">
+      The study planner that keeps you<br><em>actually on track</em>
+    </h1>
+    <p class="land-sub">
+      StudyFlow helps you organise every subject, topic and exam in one place — so you always know what to study next and never get blindsided by a deadline.
+    </p>
+    <div class="land-cta-row">
+      <button class="btn-land-cta" onclick="enterApp()">Start planning for free →</button>
+      <button class="btn-land-cta-sec" onclick="document.getElementById('land-pricing').scrollIntoView({behavior:'smooth'})">See pricing</button>
+    </div>
+    <div class="land-features">
+      <div class="land-feat-pill">📚 Subject organiser</div>
+      <div class="land-feat-pill">✅ Topic progress tracking</div>
+      <div class="land-feat-pill">📅 Exam countdown</div>
+      <div class="land-feat-pill">📊 Progress insights</div>
+      <div class="land-feat-pill">✨ AI scheduling <span style="color:#a78bfa;margin-left:2px;">Pro</span></div>
+    </div>
+    <div class="land-social">
+      <div class="land-avatars">
+        <div class="land-avatar" style="background:#4f8ef7;">A</div>
+        <div class="land-avatar" style="background:#10b981;">S</div>
+        <div class="land-avatar" style="background:#f59e0b;">J</div>
+        <div class="land-avatar" style="background:#8b5cf6;">M</div>
+        <div class="land-avatar" style="background:#ef4444;">R</div>
+      </div>
+      <div class="land-social-text"><strong>2,400+ students</strong> already using StudyFlow</div>
+      <div class="land-stars">★★★★★</div>
+    </div>
+  </div>
+
+  <!-- Pricing on landing -->
+  <div class="land-pricing-section" id="land-pricing">
+    <div class="land-section-label">Pricing</div>
+    <div class="land-section-title">Start free. Upgrade when you're ready.</div>
+    <div class="land-section-sub">No pressure, no lock-in. Upgrade or cancel whenever you like.</div>
+
+    <!-- Billing toggle -->
+    <div class="billing-toggle-wrap" style="justify-content:center;">
+      <span class="billing-opt" id="bill-monthly-lbl" style="color:#fff;">Monthly</span>
+      <div class="billing-toggle" id="billing-toggle" onclick="toggleBilling()">
+        <div class="billing-knob" id="billing-knob"></div>
+      </div>
+      <span class="billing-opt" id="bill-yearly-lbl">Yearly <span class="save-badge">Save 40%</span></span>
+    </div>
+
+    <div class="plans-grid">
+      <!-- FREE -->
+      <div class="plan-card">
+        <div class="plan-header">
+          <div class="plan-icon">🌱</div>
+          <div class="plan-name">Free</div>
+          <div class="plan-desc">Perfect for getting started and trying everything out.</div>
+        </div>
+        <div class="plan-price-wrap">
+          <div class="plan-price">£0</div>
+          <div class="plan-period">forever</div>
+        </div>
+        <ul class="plan-features">
+          <li class="feat yes">Up to 3 subjects</li>
+          <li class="feat yes">Up to 10 topics</li>
+          <li class="feat yes">Exam scheduling</li>
+          <li class="feat yes">Progress tracking</li>
+          <li class="feat no">AI study scheduler</li>
+          <li class="feat no">Unlimited subjects & topics</li>
+          <li class="feat no">Insights & analytics</li>
+          <li class="feat no">Priority support</li>
+        </ul>
+        <button class="plan-btn plan-btn-ghost" onclick="enterApp()">Start for free</button>
+      </div>
+      <!-- PRO -->
+      <div class="plan-card plan-card-pro">
+        <div class="plan-popular-badge">Most popular</div>
+        <div class="plan-header">
+          <div class="plan-icon">🚀</div>
+          <div class="plan-name">Pro</div>
+          <div class="plan-desc">Everything you need to study smarter and stay ahead.</div>
+        </div>
+        <div class="plan-price-wrap">
+          <div class="plan-price" id="pro-price">£4.99</div>
+          <div class="plan-period" id="pro-period">per month</div>
+          <div class="plan-yearly-note" id="pro-yearly-note" style="display:none;">Billed as £35.99/year</div>
+        </div>
+        <ul class="plan-features">
+          <li class="feat yes">Unlimited subjects</li>
+          <li class="feat yes">Unlimited topics</li>
+          <li class="feat yes">Exam scheduling</li>
+          <li class="feat yes">Progress tracking</li>
+          <li class="feat yes">AI study scheduler ✨</li>
+          <li class="feat yes">Insights & analytics</li>
+          <li class="feat yes">Priority support</li>
+          <li class="feat yes">Early access to new features</li>
+        </ul>
+        <button class="plan-btn plan-btn-pro" onclick="openCheckout('pro')">Get Pro →</button>
+      </div>
+      <!-- LIFETIME -->
+      <div class="plan-card plan-card-lifetime">
+        <div class="plan-header">
+          <div class="plan-icon">♾️</div>
+          <div class="plan-name">Lifetime</div>
+          <div class="plan-desc">Pay once, use StudyFlow Pro forever. Best value long-term.</div>
+        </div>
+        <div class="plan-price-wrap">
+          <div class="plan-price">£79</div>
+          <div class="plan-period">one-time payment</div>
+          <div class="plan-yearly-note">Less than 16 months of Pro</div>
+        </div>
+        <ul class="plan-features">
+          <li class="feat yes">Everything in Pro</li>
+          <li class="feat yes">Lifetime updates</li>
+          <li class="feat yes">No recurring charges — ever</li>
+          <li class="feat yes">First access to all new features</li>
+          <li class="feat yes">Dedicated support</li>
+        </ul>
+        <button class="plan-btn plan-btn-lifetime" onclick="openCheckout('lifetime')">Get Lifetime Access →</button>
+      </div>
+    </div>
+
+    <div class="pricing-footer">
+      <div class="pf-item">🔒 Payments processed securely through Stripe</div>
+      <div class="pf-item">↩️ 14-day money-back guarantee, no questions asked</div>
+      <div class="pf-item">❌ Cancel anytime — no lock-in contracts</div>
+      <div class="pf-item">📧 Questions? <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="8ce4e9e0e0e3ccfff8f9e8f5eae0e3fba2edfcfc">[email&#160;protected]</a></div>
+    </div>
+  </div>
+
+  <div class="land-footer">
+    © 2025 StudyFlow · Built for students, by students
+  </div>
+</div>
+
+<!-- ================================================================
+     SIDEBAR
+     ================================================================ -->
+<nav class="sidebar" id="sidebar">
+  <div class="logo">
+    <div class="logo-icon">📖</div>
+    <div class="logo-name">Study<span>Flow</span></div>
+  </div>
+  <div class="nav-label">Menu</div>
+  <button class="nav-item active" id="nav-dashboard" onclick="goTo('dashboard')">
+    <span class="nav-icon">🏠</span> Dashboard
+  </button>
+  <button class="nav-item" id="nav-subjects" onclick="goTo('subjects')">
+    <span class="nav-icon">📚</span> Subjects
+  </button>
+  <button class="nav-item" id="nav-topics" onclick="goTo('topics')">
+    <span class="nav-icon">📝</span> Topics
+  </button>
+  <button class="nav-item" id="nav-exams" onclick="goTo('exams')">
+    <span class="nav-icon">📅</span> Exams
+  </button>
+  <button class="nav-item" id="nav-pricing" onclick="goTo('pricing')">
+    <span class="nav-icon">💳</span> Pricing
+  </button>
+  <div class="nav-label" style="margin-top:16px;">On the way</div>
+  <button class="nav-item" style="opacity:.38;cursor:not-allowed;pointer-events:none;">
+    <span class="nav-icon">✨</span> AI Scheduler
+  </button>
+  <button class="nav-item" style="opacity:.38;cursor:not-allowed;pointer-events:none;">
+    <span class="nav-icon">📊</span> Insights
+  </button>
+
+  <div class="sidebar-bottom">
+    <!-- Free plan usage indicator -->
+    <div class="pro-badge-sidebar" onclick="goTo('pricing')">
+      <div class="pro-badge-top">
+        <span class="pro-badge-label">Free plan</span>
+        <span class="pro-badge-chip">Upgrade →</span>
+      </div>
+      <div class="pro-badge-bar-track">
+        <div class="pro-badge-bar-fill" id="sidebar-usage-bar" style="width:0%"></div>
+      </div>
+      <div class="pro-badge-sub" id="sidebar-usage-text">0 / 3 subjects used</div>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-ava">JS</div>
+      <div>
+        <div class="user-name">Jamie Student</div>
+        <div class="user-role">Year 12 · A-Levels</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ================================================================
+     MAIN CONTENT
+     ================================================================ -->
+<div id="app" style="display:none;"></div>
+<div id="app-shell" style="display:none;">
+<main class="main">
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <div>
+        <div class="page-title" id="greeting">Good morning, Jamie! 👋</div>
+        <div class="page-subtitle" id="today-date"></div>
+      </div>
+    </div>
+
+    <div class="ai-banner">
+      <div class="ai-emoji">✨</div>
+      <div class="ai-body">
+        <div class="ai-title">Smart scheduling is on its way</div>
+        <div class="ai-desc">Soon you'll be able to connect an AI that looks at your exams and topic workload, then builds a personalised daily study plan — automatically.</div>
+      </div>
+      <button class="btn-ai">Coming soon</button>
+    </div>
+
+    <div class="grid-4" style="margin-bottom:24px;">
+      <div class="stat-card c-blue">
+        <div class="stat-icon c-blue">📚</div>
+        <div class="stat-label">Subjects</div>
+        <div class="stat-value" id="s-subjects">0</div>
+        <div class="stat-sub">on your plate right now</div>
+      </div>
+      <div class="stat-card c-green">
+        <div class="stat-icon c-green">✅</div>
+        <div class="stat-label">Topics Done</div>
+        <div class="stat-value" id="s-done">0</div>
+        <div class="stat-sub">great progress so far</div>
+      </div>
+      <div class="stat-card c-yellow">
+        <div class="stat-icon c-yellow">📝</div>
+        <div class="stat-label">Still to Cover</div>
+        <div class="stat-value" id="s-pending">0</div>
+        <div class="stat-sub">topics waiting for you</div>
+      </div>
+      <div class="stat-card c-red">
+        <div class="stat-icon c-red">📅</div>
+        <div class="stat-label">Exams Ahead</div>
+        <div class="stat-value" id="s-exams">0</div>
+        <div class="stat-sub">in the diary</div>
+      </div>
+    </div>
+
+    <div class="card progress-wrap">
+      <div class="progress-header">
+        <span class="progress-title">How far through your topics are you?</span>
+        <span class="progress-pct" id="prog-pct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="prog-bar" style="width:0%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:.75rem;color:var(--text-muted);">
+        <span id="prog-l">None ticked off yet</span>
+        <span id="prog-r">0 topics in total</span>
+      </div>
+    </div>
+
+    <div id="dash-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:6px;">
+      <div>
+        <div class="section-heading">📅 Coming up</div>
+        <div id="dash-exams"></div>
+      </div>
+      <div>
+        <div class="section-heading">📝 Pick up where you left off</div>
+        <div id="dash-topics"></div>
+      </div>
+    </div>
+
+    <!-- Upgrade nudge at bottom of dashboard -->
+    <div class="upgrade-nudge" onclick="goTo('pricing')">
+      <div class="upgrade-nudge-left">
+        <div class="upgrade-nudge-icon">⚡</div>
+        <div>
+          <div class="upgrade-nudge-title">You're on the Free plan</div>
+          <div class="upgrade-nudge-sub">Unlock unlimited subjects, AI scheduling and more with StudyFlow Pro.</div>
+        </div>
+      </div>
+      <button class="btn-upgrade-nudge">See plans →</button>
+    </div>
+  </div>
+
+  <!-- SUBJECTS -->
+  <div class="page" id="page-subjects">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Your Subjects</div>
+        <div class="page-subtitle">Everything you're studying, in one place</div>
+      </div>
+      <button class="btn btn-primary" onclick="openModal('subject')">＋ Add a Subject</button>
+    </div>
+    <div id="subjects-grid" class="grid-3"></div>
+  </div>
+
+  <!-- TOPICS -->
+  <div class="page" id="page-topics">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Topics</div>
+        <div class="page-subtitle">Break each subject down and work through it bit by bit</div>
+      </div>
+      <button class="btn btn-primary" onclick="openModal('topic')">＋ Add a Topic</button>
+    </div>
+    <div class="filter-bar" id="topic-filters"></div>
+    <div id="topics-container"></div>
+  </div>
+
+  <!-- EXAMS -->
+  <div class="page" id="page-exams">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Exams</div>
+        <div class="page-subtitle">Know exactly what's coming and when</div>
+      </div>
+      <button class="btn btn-primary" onclick="openModal('exam')">＋ Add an Exam</button>
+    </div>
+    <div id="exams-grid" class="grid-2"></div>
+  </div>
+
+  <!-- PRICING PAGE (in-app) -->
+  <div class="page" id="page-pricing">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Simple, honest pricing</div>
+        <div class="page-subtitle">Start free, upgrade whenever it feels right. No hidden fees.</div>
+      </div>
+    </div>
+    <div class="billing-toggle-wrap">
+      <span class="billing-opt" style="color:#fff;">Monthly</span>
+      <div class="billing-toggle" id="billing-toggle-app" onclick="toggleBillingApp()">
+        <div class="billing-knob" id="billing-knob-app"></div>
+      </div>
+      <span class="billing-opt">Yearly <span class="save-badge">Save 40%</span></span>
+    </div>
+    <div class="plans-grid">
+      <div class="plan-card">
+        <div class="plan-header"><div class="plan-icon">🌱</div><div class="plan-name">Free</div><div class="plan-desc">Everything you need to get started.</div></div>
+        <div class="plan-price-wrap"><div class="plan-price">£0</div><div class="plan-period">forever</div></div>
+        <ul class="plan-features">
+          <li class="feat yes">Up to 3 subjects</li><li class="feat yes">Up to 10 topics</li>
+          <li class="feat yes">Exam scheduling</li><li class="feat yes">Progress tracking</li>
+          <li class="feat no">AI study scheduler</li><li class="feat no">Unlimited subjects & topics</li>
+          <li class="feat no">Insights & analytics</li><li class="feat no">Priority support</li>
+        </ul>
+        <button class="plan-btn plan-btn-ghost" disabled>Your current plan</button>
+      </div>
+      <div class="plan-card plan-card-pro">
+        <div class="plan-popular-badge">Most popular</div>
+        <div class="plan-header"><div class="plan-icon">🚀</div><div class="plan-name">Pro</div><div class="plan-desc">Study smarter with AI-powered scheduling and no limits.</div></div>
+        <div class="plan-price-wrap">
+          <div class="plan-price" id="app-pro-price">£4.99</div>
+          <div class="plan-period" id="app-pro-period">per month</div>
+          <div class="plan-yearly-note" id="app-pro-yearly" style="display:none;">Billed as £35.99/year</div>
+        </div>
+        <ul class="plan-features">
+          <li class="feat yes">Unlimited subjects & topics</li><li class="feat yes">AI study scheduler ✨</li>
+          <li class="feat yes">Insights & analytics</li><li class="feat yes">Priority support</li>
+          <li class="feat yes">Early access to new features</li>
+        </ul>
+        <button class="plan-btn plan-btn-pro" onclick="openCheckout('pro')">Upgrade to Pro →</button>
+      </div>
+      <div class="plan-card plan-card-lifetime">
+        <div class="plan-header"><div class="plan-icon">♾️</div><div class="plan-name">Lifetime</div><div class="plan-desc">Pay once. Use StudyFlow Pro forever.</div></div>
+        <div class="plan-price-wrap"><div class="plan-price">£79</div><div class="plan-period">one-time payment</div><div class="plan-yearly-note">Less than 16 months of Pro</div></div>
+        <ul class="plan-features">
+          <li class="feat yes">Everything in Pro</li><li class="feat yes">Lifetime updates</li>
+          <li class="feat yes">No recurring charges — ever</li><li class="feat yes">Dedicated support</li>
+        </ul>
+        <button class="plan-btn plan-btn-lifetime" onclick="openCheckout('lifetime')">Get Lifetime Access →</button>
+      </div>
+    </div>
+    <div class="pricing-footer">
+      <div class="pf-item">🔒 Payments processed securely through Stripe</div>
+      <div class="pf-item">↩️ 14-day money-back guarantee</div>
+      <div class="pf-item">❌ Cancel anytime — no lock-in</div>
+      <div class="pf-item">📧 <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="8fe7eae3e3e0cffcfbfaebf6e9e3e0f8a1eeffff">[email&#160;protected]</a></div>
+    </div>
+  </div>
+
+</main>
+</div><!-- end app-shell -->
+
+<!-- ================================================================
+     MODALS
+     ================================================================ -->
+
+<!-- Checkout Modal — PayPal -->
+<div class="modal-overlay" id="modal-checkout">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <div class="modal-title" id="checkout-title">Upgrade to Pro</div>
+      <button class="modal-close" onclick="closeModal('checkout')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Plan summary chip -->
+      <div class="checkout-plan-summary">
+        <div class="cps-icon" id="cps-icon">🚀</div>
+        <div>
+          <div class="cps-name" id="cps-name">StudyFlow Pro</div>
+          <div class="cps-price" id="cps-price">£4.99 / month</div>
+        </div>
+      </div>
+
+      <!-- Trust note -->
+      <div class="checkout-stripe-note">
+        <div style="font-weight:600;font-size:.9rem;margin-bottom:6px;">🔒 Pay securely with PayPal</div>
+        <div style="font-size:.82rem;color:var(--text-muted);line-height:1.6;">
+          Click the PayPal button below to complete your purchase. You can pay with your PayPal balance, card, or bank — all handled securely by PayPal.
+        </div>
+      </div>
+
+      <!-- PayPal button renders here -->
+      <div id="paypal-button-container" style="margin-top:4px;min-height:50px;"></div>
+
+      <div style="text-align:center;font-size:.75rem;color:var(--text-muted);margin-top:14px;">
+        🔒 Secured by PayPal &nbsp;·&nbsp; 14-day money-back guarantee &nbsp;·&nbsp; Cancel anytime
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Subject Modal -->
+<div class="modal-overlay" id="modal-subject">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-subject-ttl">Add a subject</div>
+      <button class="modal-close" onclick="closeModal('subject')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="subj-edit-id"/>
+      <div class="field"><label>What are you studying?</label><input type="text" id="subj-name" placeholder="e.g. Mathematics, English Lit…"/></div>
+      <div class="field"><label>Pick an emoji to represent it</label><input type="text" id="subj-emoji" placeholder="e.g. 🔢" maxlength="2"/></div>
+      <div class="field">
+        <label>Colour theme</label>
+        <select id="subj-color">
+          <option value="blue">💙 Blue</option>
+          <option value="green">💚 Green</option>
+          <option value="yellow">💛 Yellow</option>
+          <option value="red">❤️ Red</option>
+          <option value="purple">💜 Purple</option>
+          <option value="teal">🩵 Teal</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('subject')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveSubject()">Add subject</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Topic Modal -->
+<div class="modal-overlay" id="modal-topic">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-topic-ttl">Add a topic</div>
+      <button class="modal-close" onclick="closeModal('topic')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="topic-edit-id"/>
+      <div class="field"><label>What's the topic?</label><input type="text" id="topic-name" placeholder="e.g. Integration by Parts, The Cold War…"/></div>
+      <div class="field"><label>Which subject does it belong to?</label><select id="topic-subj"></select></div>
+      <div class="field"><label>Roughly how many hours will it take? <span style="font-weight:400;text-transform:none;">(optional)</span></label><input type="number" id="topic-hours" placeholder="e.g. 3" min="0.5" step="0.5"/></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('topic')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveTopic()">Add topic</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Exam Modal -->
+<div class="modal-overlay" id="modal-exam">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-exam-ttl">Add an exam</div>
+      <button class="modal-close" onclick="closeModal('exam')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="exam-edit-id"/>
+      <div class="field"><label>What's the exam?</label><input type="text" id="exam-name" placeholder="e.g. Maths Paper 1, Biology Mock…"/></div>
+      <div class="field"><label>Which subject is it for?</label><select id="exam-subj"></select></div>
+      <div class="field"><label>When is it?</label><input type="date" id="exam-date"/></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('exam')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveExam()">Add exam</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ================================================================
+     JAVASCRIPT
+     ================================================================ -->
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+/* ============================================================
+   COLOUR MAP
+   ============================================================ */
+const COLORS = {
+  blue:   { card:'sc-blue',   tag:'tag-blue',   bar:'linear-gradient(90deg,#4f8ef7,#818cf8)' },
+  green:  { card:'sc-green',  tag:'tag-green',  bar:'linear-gradient(90deg,#10b981,#34d399)' },
+  yellow: { card:'sc-yellow', tag:'tag-yellow', bar:'linear-gradient(90deg,#f59e0b,#fbbf24)' },
+  red:    { card:'sc-red',    tag:'tag-red',    bar:'linear-gradient(90deg,#ef4444,#f87171)' },
+  purple: { card:'sc-purple', tag:'tag-purple', bar:'linear-gradient(90deg,#8b5cf6,#a78bfa)' },
+  teal:   { card:'sc-teal',   tag:'tag-teal',   bar:'linear-gradient(90deg,#14b8a6,#34d399)' },
+};
+
+/* ============================================================
+   DATA — demo seed data
+   Replace with Firestore reads when connecting Firebase.
+   Each collection maps to: subjects / topics / exams in Firestore.
+   ============================================================ */
+let subjects = [
+  { id:'s1', name:'Mathematics',      emoji:'🔢', color:'blue'   },
+  { id:'s2', name:'Biology',          emoji:'🧬', color:'green'  },
+  { id:'s3', name:'History',          emoji:'📜', color:'yellow' },
+  { id:'s4', name:'Computer Science', emoji:'💻', color:'purple' },
+];
+
+// Firestore schema: { topicName, subjectId, estimatedHours, status: 'pending'|'completed' }
+let topics = [
+  { id:'t1',  subjectId:'s1', name:'Quadratic Equations',     hours:3,   status:'completed' },
+  { id:'t2',  subjectId:'s1', name:'Integration by Parts',    hours:4,   status:'pending'   },
+  { id:'t3',  subjectId:'s1', name:'Trigonometry Identities', hours:2.5, status:'pending'   },
+  { id:'t4',  subjectId:'s2', name:'Cell Division (Mitosis)', hours:2,   status:'completed' },
+  { id:'t5',  subjectId:'s2', name:'Photosynthesis',          hours:3,   status:'completed' },
+  { id:'t6',  subjectId:'s2', name:'Genetics & Inheritance',  hours:4,   status:'pending'   },
+  { id:'t7',  subjectId:'s3', name:'World War I Causes',      hours:2,   status:'completed' },
+  { id:'t8',  subjectId:'s3', name:'Treaty of Versailles',    hours:1.5, status:'pending'   },
+  { id:'t9',  subjectId:'s4', name:'Sorting Algorithms',      hours:3,   status:'pending'   },
+  { id:'t10', subjectId:'s4', name:'Boolean Logic',           hours:2,   status:'completed' },
+];
+
+// Firestore schema: { examName, subjectId, examDate (YYYY-MM-DD) }
+let exams = [
+  { id:'e1', subjectId:'s1', name:'Maths Paper 1',     date: daysFromNow(14)  },
+  { id:'e2', subjectId:'s2', name:'Biology Mock Exam', date: daysFromNow(5)   },
+  { id:'e3', subjectId:'s3', name:'History Essay',     date: daysFromNow(21)  },
+  { id:'e4', subjectId:'s4', name:'CS Practical Exam', date: daysFromNow(30)  },
+  { id:'e5', subjectId:'s1', name:'Maths Paper 2',     date: daysFromNow(-3)  },
+];
+
+function daysFromNow(n) {
+  const d = new Date(); d.setDate(d.getDate()+n);
+  return d.toISOString().split('T')[0];
+}
+
+let _id = 100;
+const uid = () => 'id'+(++_id);
+
+/* ============================================================
+   PAYPAL CONFIGURATION
+   Client ID: AbBbdt1ND8Cmc9B-xPcfz3j9L6fOGrSb6sbOww6bd8Yt-Iq2OFUSOFGtFDsfy3Dnu-BbzsVrxG6SvSv5
+   ============================================================ */
+const PAYPAL_CLIENT_ID = 'AbBbdt1ND8Cmc9B-xPcfz3j9L6fOGrSb6sbOww6bd8Yt-Iq2OFUSOFGtFDsfy3Dnu-BbzsVrxG6SvSv5';
+
+/* Plan prices — update these to match your PayPal products */
+const PLANS = {
+  pro_monthly: { label:'StudyFlow Pro',     price:'4.99',  desc:'Pro Monthly Plan',     currency:'GBP' },
+  pro_yearly:  { label:'StudyFlow Pro',     price:'35.99', desc:'Pro Yearly Plan',       currency:'GBP' },
+  lifetime:    { label:'StudyFlow Lifetime',price:'79.00', desc:'Lifetime Access',       currency:'GBP' },
+};
+
+/* Currently selected plan key */
+let activePlanKey = 'pro_monthly';
+
+/* Render the PayPal button for the current plan */
+function renderPayPalButton() {
+  const container = document.getElementById('paypal-button-container');
+
+  // Check PayPal SDK loaded correctly
+  if (typeof window.paypal === 'undefined') {
+    container.innerHTML = `
+      <div style="text-align:center;padding:20px;border-radius:10px;background:#fee2e2;color:#991b1b;">
+        <div style="font-size:1.2rem;margin-bottom:6px;">⚠️ PayPal couldn't load</div>
+        <div style="font-size:.82rem;line-height:1.6;">
+          This usually means the page is being opened as a local file.<br>
+          <strong>Host the file on a web server</strong> (e.g. Netlify, GitHub Pages, or VS Code Live Server)
+          and PayPal will load correctly.
+        </div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = '';
+  const plan = PLANS[activePlanKey];
+
+  window.paypal.Buttons({
+    style: {
+      layout: 'vertical',
+      color:  'gold',
+      shape:  'rect',
+      label:  'pay',
+      height: 48,
+    },
+
+    /* Create the order with the correct amount */
+    createOrder: function(data, actions) {
+      return actions.order.create({
+        purchase_units: [{
+          description: plan.desc,
+          amount: {
+            currency_code: plan.currency,
+            value: plan.price,
+          }
+        }]
+      });
+    },
+
+    /* On successful payment */
+    onApprove: function(data, actions) {
+      return actions.order.capture().then(function(details) {
+        closeModal('checkout');
+        toast(`🎉 Payment successful! Welcome to ${plan.label}.`, 'ok');
+        // TODO: save Pro status to Firebase here
+        // updateDoc(doc(db,'users',uid), { plan:'pro', orderId: details.id })
+      });
+    },
+
+    /* On payment error */
+    onError: function(err) {
+      console.error('PayPal error:', err);
+      container.innerHTML = `
+        <div style="text-align:center;padding:16px;border-radius:10px;background:#fee2e2;color:#991b1b;font-size:.85rem;">
+          ⚠️ PayPal ran into a problem. Please close this and try again.
+        </div>`;
+    },
+
+    /* User closed PayPal without paying */
+    onCancel: function() {
+      toast('Payment cancelled — you can upgrade any time.', '');
+    }
+
+  }).render('#paypal-button-container').catch(function(err) {
+    console.error('PayPal render error:', err);
+    container.innerHTML = `
+      <div style="text-align:center;padding:16px;border-radius:10px;background:#fee2e2;color:#991b1b;font-size:.85rem;">
+        ⚠️ Couldn't render PayPal button. Check the console for details.
+      </div>`;
+  });
+}
+
+/* Current billing cycle */
+let billingYearly = false;
+let checkoutPlan  = 'pro';
+
+function toggleBilling() {
+  billingYearly = !billingYearly;
+  const toggle = document.getElementById('billing-toggle');
+  toggle.classList.toggle('on', billingYearly);
+  const mLabel = document.getElementById('bill-monthly-lbl');
+  const yLabel = document.getElementById('bill-yearly-lbl');
+  mLabel.style.color = billingYearly ? 'rgba(255,255,255,.5)' : '#fff';
+  yLabel.style.color = billingYearly ? '#fff' : 'rgba(255,255,255,.5)';
+  document.getElementById('pro-price').textContent = billingYearly ? '£2.99' : '£4.99';
+  document.getElementById('pro-yearly-note').style.display = billingYearly ? 'block' : 'none';
+}
+
+/* Open the checkout modal and render the correct PayPal button */
+function openCheckout(plan) {
+  checkoutPlan = plan;
+
+  // Work out which plan key to charge
+  if (plan === 'lifetime') {
+    activePlanKey = 'lifetime';
+  } else if (billingYearly) {
+    activePlanKey = 'pro_yearly';
+  } else {
+    activePlanKey = 'pro_monthly';
+  }
+
+  const details = {
+    pro: {
+      icon:'🚀', name:'StudyFlow Pro',
+      price: billingYearly ? '£35.99 / year (£2.99/mo)' : '£4.99 / month',
+      title:'Upgrade to Pro'
+    },
+    lifetime: {
+      icon:'♾️', name:'StudyFlow Lifetime',
+      price:'£79 — one-time payment',
+      title:'Get Lifetime Access'
+    }
+  }[plan];
+
+  document.getElementById('checkout-title').textContent = details.title;
+  document.getElementById('cps-icon').textContent  = details.icon;
+  document.getElementById('cps-name').textContent  = details.name;
+  document.getElementById('cps-price').textContent = details.price;
+
+  document.getElementById('modal-checkout').classList.add('open');
+
+  // Render the PayPal button after modal is visible
+  setTimeout(renderPayPalButton, 100);
+}
+
+/* ============================================================
+   LANDING → APP TRANSITION
+   ============================================================ */
+function enterApp() {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('sidebar').style.display = 'flex';
+  document.getElementById('app-shell').style.display = 'block';
+  document.getElementById('ham').style.display = '';
+  renderDashboard();
+  updateSidebarUsage();
+}
+
+/* Update the free plan usage bar in the sidebar */
+function updateSidebarUsage() {
+  const pct = Math.min(100, Math.round(subjects.length / 3 * 100));
+  document.getElementById('sidebar-usage-bar').style.width = pct + '%';
+  document.getElementById('sidebar-usage-text').textContent = `${subjects.length} / 3 subjects used`;
+}
+
+/* In-app billing toggle (separate from landing toggle) */
+let billingYearlyApp = false;
+function toggleBillingApp() {
+  billingYearlyApp = !billingYearlyApp;
+  const toggle = document.getElementById('billing-toggle-app');
+  toggle.classList.toggle('on', billingYearlyApp);
+  document.getElementById('app-pro-price').textContent = billingYearlyApp ? '£2.99' : '£4.99';
+  document.getElementById('app-pro-period').textContent = 'per month';
+  document.getElementById('app-pro-yearly').style.display = billingYearlyApp ? 'block' : 'none';
+  // sync billingYearly so openCheckout uses correct link
+  billingYearly = billingYearlyApp;
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function goTo(page) {
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('nav-'+page).classList.add('active');
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  closeSidebar();
+  ({ dashboard:renderDashboard, subjects:renderSubjects, topics:renderTopics, exams:renderExams })[page]?.();
+}
+
+function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('veil').classList.add('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('veil').classList.remove('open'); }
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+function renderDashboard() {
+  const h = new Date().getHours();
+  const greet = h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+  document.getElementById('greeting').textContent = greet+', Jamie! 👋';
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  const done    = topics.filter(t=>t.status==='completed').length;
+  const pending = topics.filter(t=>t.status!=='completed').length;
+  const total   = topics.length;
+  const pct     = total ? Math.round(done/total*100) : 0;
+  const today   = new Date(); today.setHours(0,0,0,0);
+  const upcoming= exams.filter(e=>new Date(e.date)>=today);
+
+  document.getElementById('s-subjects').textContent = subjects.length;
+  document.getElementById('s-done').textContent     = done;
+  document.getElementById('s-pending').textContent  = pending;
+  document.getElementById('s-exams').textContent    = upcoming.length;
+  document.getElementById('prog-pct').textContent   = pct+'%';
+  document.getElementById('prog-bar').style.width   = pct+'%';
+  document.getElementById('prog-l').textContent     = done ? `${done} ticked off` : 'None ticked off yet';
+  document.getElementById('prog-r').textContent     = total+' topics in total';
+
+  // Next 3 exams
+  const next = [...upcoming].sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,3);
+  document.getElementById('dash-exams').innerHTML = next.length
+    ? next.map(e=>miniExam(e)).join('')
+    : '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Nothing in the diary yet</div><div class="empty-sub">Add an exam and it\'ll show up here.</div></div>';
+
+  // First 6 pending topics
+  const pend6 = topics.filter(t=>t.status!=='completed').slice(0,6);
+  document.getElementById('dash-topics').innerHTML = pend6.length
+    ? pend6.map(t=>{
+        const s = subjects.find(s=>s.id===t.subjectId);
+        const c = COLORS[s?.color||'blue'];
+        return `<div class="task-item" onclick="toggleTopic('${t.id}')">
+          <div class="task-check" id="chk-${t.id}"></div>
+          <span class="task-name">${esc(t.name)}</span>
+          ${s?`<span class="tag ${c.tag}">${esc(s.emoji)} ${esc(s.name)}</span>`:''}
+        </div>`;
+      }).join('')
+    : '<div class="empty"><div class="empty-icon">🎉</div><div class="empty-text">You\'re all caught up!</div><div class="empty-sub">Nothing left to tick off — enjoy the break.</div></div>';
+}
+
+function miniExam(e) {
+  const d    = new Date(e.date);
+  const today= new Date(); today.setHours(0,0,0,0);
+  const diff = Math.ceil((d-today)/86400000);
+  const sub  = subjects.find(s=>s.id===e.subjectId);
+  const cls  = diff<=3?'cd-soon':diff<=7?'cd-near':'cd-far';
+  return `<div class="exam-card" style="margin-bottom:8px;">
+    <div class="exam-date-box"><div class="exam-day">${d.toLocaleDateString('en-GB',{day:'numeric'})}</div><div class="exam-mon">${d.toLocaleDateString('en-GB',{month:'short'})}</div></div>
+    <div class="exam-info"><div class="exam-name">${esc(e.name)}</div><div class="exam-subject">${sub?esc(sub.name):''}</div></div>
+    <span class="countdown ${cls}">${diff===0?'Today!':diff+'d'}</span>
+  </div>`;
+}
+
+/* ============================================================
+   SUBJECTS
+   ============================================================ */
+function renderSubjects() {
+  const g = document.getElementById('subjects-grid');
+  if (!subjects.length) {
+    g.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📚</div><div class="empty-text">No subjects added yet</div><div class="empty-sub">Start by adding the subjects you\'re studying this term.</div></div>';
+    return;
+  }
+  g.innerHTML = subjects.map(s=>{
+    const c   = COLORS[s.color||'blue'];
+    const ts  = topics.filter(t=>t.subjectId===s.id);
+    const done= ts.filter(t=>t.status==='completed').length;
+    const ex  = exams.filter(e=>e.subjectId===s.id).length;
+    const pct = ts.length ? Math.round(done/ts.length*100) : 0;
+    return `<div class="subject-card ${c.card}">
+      <div class="subject-card-top">
+        <div class="subject-actions">
+          <button class="btn btn-ghost btn-icon btn-sm" onclick="editSubject('${s.id}')">✏️</button>
+          <button class="btn btn-danger btn-icon btn-sm" onclick="deleteSubject('${s.id}')">🗑</button>
+        </div>
+        <div class="subject-emoji">${esc(s.emoji||'📘')}</div>
+        <div class="subject-name">${esc(s.name)}</div>
+      </div>
+      <div class="subject-card-bot">
+        <div class="subject-meta">
+          <span>📝 ${ts.length} topic${ts.length===1?'':'s'}</span>
+          <span>✅ ${done} done</span>
+          <span>📅 ${ex} exam${ex===1?'':'s'}</span>
+        </div>
+        <div class="mini-track"><div class="mini-fill" style="width:${pct}%;background:${c.bar}"></div></div>
+        <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px;">${pct === 100 ? 'All done — great work! 🎉' : pct+'% covered so far'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   TOPICS
+   ============================================================ */
+let topicFilter = 'all';
+function setTopicFilter(v) { topicFilter=v; renderTopics(); }
+
+function renderTopics() {
+  // Filter pills
+  document.getElementById('topic-filters').innerHTML =
+    `<button class="filter-btn ${topicFilter==='all'?'active':''}" onclick="setTopicFilter('all')">All Subjects</button>`+
+    subjects.map(s=>`<button class="filter-btn ${topicFilter===s.id?'active':''}" onclick="setTopicFilter('${s.id}')">${esc(s.emoji)} ${esc(s.name)}</button>`).join('');
+
+  const list = topicFilter==='all' ? topics : topics.filter(t=>t.subjectId===topicFilter);
+  const cont = document.getElementById('topics-container');
+  if (!list.length) {
+    cont.innerHTML='<div class="empty"><div class="empty-icon">📝</div><div class="empty-text">No topics here yet</div><div class="empty-sub">Break your subjects down into topics and track your progress as you go.</div></div>';
+    return;
+  }
+  // Group by subject
+  const groups = {};
+  list.forEach(t=>{ (groups[t.subjectId]||(groups[t.subjectId]=[])).push(t); });
+  cont.innerHTML = Object.entries(groups).map(([sid,ts])=>{
+    const sub = subjects.find(s=>s.id===sid);
+    const c   = COLORS[sub?.color||'blue'];
+    return `<div class="topic-group">
+      <div class="topic-group-title">${sub?esc(sub.emoji):''} ${sub?esc(sub.name):'Unknown'}</div>
+      ${ts.map(t=>`
+        <div class="topic-row ${t.status==='completed'?'completed':''}">
+          <div class="topic-check ${t.status==='completed'?'on':''}" onclick="toggleTopic('${t.id}')"></div>
+          <div class="topic-info">
+            <div class="topic-name ${t.status==='completed'?'done':''}">${esc(t.name)}</div>
+            ${t.hours?`<div class="topic-hours">⏱ About ${t.hours} hr${t.hours===1?'':'s'} to cover</div>`:''}
+          </div>
+          <span class="tag ${c.tag}">${t.status==='completed'?'✅ Covered':'⏳ To do'}</span>
+          <div class="topic-actions">
+            <button class="btn btn-ghost btn-icon btn-sm" onclick="editTopic('${t.id}')">✏️</button>
+            <button class="btn btn-danger btn-icon btn-sm" onclick="deleteTopic('${t.id}')">🗑</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   EXAMS
+   ============================================================ */
+function renderExams() {
+  const g     = document.getElementById('exams-grid');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const sorted= [...exams].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if (!sorted.length) {
+    g.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📅</div><div class="empty-text">No exams scheduled yet</div><div class="empty-sub">Add your exams so you can see how much time you have to prepare.</div></div>';
+    return;
+  }
+  g.innerHTML = sorted.map(e=>{
+    const d    = new Date(e.date);
+    const diff = Math.ceil((d-today)/86400000);
+    const sub  = subjects.find(s=>s.id===e.subjectId);
+    const past = diff<0;
+    const cls  = past?'cd-past':diff===0?'cd-soon':diff<=3?'cd-soon':diff<=7?'cd-near':'cd-far';
+    const txt  = past?'Past':diff===0?'Today!':diff+'d away';
+    return `<div class="exam-card ${past?'past':''}">
+      <div class="exam-date-box">
+        <div class="exam-day">${d.toLocaleDateString('en-GB',{day:'numeric'})}</div>
+        <div class="exam-mon">${d.toLocaleDateString('en-GB',{month:'short'})}</div>
+      </div>
+      <div class="exam-info">
+        <div class="exam-name">${esc(e.name)}</div>
+        <div class="exam-subject">${sub?`${esc(sub.emoji)} ${esc(sub.name)}`:''}</div>
+      </div>
+      <div class="exam-actions">
+        <span class="countdown ${cls}">${txt}</span>
+        <button class="btn btn-ghost btn-icon btn-sm" onclick="editExam('${e.id}')">✏️</button>
+        <button class="btn btn-danger btn-icon btn-sm" onclick="deleteExam('${e.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   TOGGLE TOPIC
+   Firebase: await updateDoc(doc(db,'topics',id),{status})
+   ============================================================ */
+function toggleTopic(id) {
+  const t = topics.find(t=>t.id===id);
+  if (!t) return;
+  t.status = t.status==='completed'?'pending':'completed';
+  toast(t.status==='completed'?'Nice one — topic marked as covered! ✅':'Topic moved back to your to-do list', t.status==='completed'?'ok':'');
+  const active = document.querySelector('.page.active').id;
+  if (active==='page-dashboard') renderDashboard();
+  if (active==='page-topics')    renderTopics();
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+function openModal(type) {
+  if (type==='topic'||type==='exam') {
+    const sel = document.getElementById(type+'-subj');
+    sel.innerHTML = subjects.length
+      ? subjects.map(s=>`<option value="${s.id}">${esc(s.emoji)} ${esc(s.name)}</option>`).join('')
+      : '<option value="">Add a subject first</option>';
+  }
+  document.getElementById('modal-'+type).classList.add('open');
+}
+function closeModal(type) {
+  document.getElementById('modal-'+type).classList.remove('open');
+  if (type==='subject') { document.getElementById('subj-edit-id').value=document.getElementById('subj-name').value=document.getElementById('subj-emoji').value=''; document.getElementById('subj-color').value='blue'; document.getElementById('modal-subject-ttl').textContent='Add a subject'; }
+  if (type==='topic')   { document.getElementById('topic-edit-id').value=document.getElementById('topic-name').value=document.getElementById('topic-hours').value=''; document.getElementById('modal-topic-ttl').textContent='Add a topic'; }
+  if (type==='exam')    { document.getElementById('exam-edit-id').value=document.getElementById('exam-name').value=document.getElementById('exam-date').value=''; document.getElementById('modal-exam-ttl').textContent='Add an exam'; }
+  if (type==='checkout'){ document.getElementById('checkout-email') && (document.getElementById('checkout-email').value=''); document.getElementById('paypal-button-container').innerHTML=''; }
+}
+document.querySelectorAll('.modal-overlay').forEach(el=>{
+  el.addEventListener('click',function(e){ if(e.target===this) closeModal(this.id.replace('modal-','')); });
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay.open').forEach(el=>closeModal(el.id.replace('modal-',''))); });
+
+/* ============================================================
+   SUBJECT CRUD
+   Firebase: addDoc / updateDoc / deleteDoc on 'subjects' collection
+   ============================================================ */
+function saveSubject() {
+  const name  = document.getElementById('subj-name').value.trim();
+  const emoji = document.getElementById('subj-emoji').value.trim()||'📘';
+  const color = document.getElementById('subj-color').value;
+  const editId= document.getElementById('subj-edit-id').value;
+  if (!name) { toast('What are you studying? Give the subject a name.','err'); return; }
+  // Free plan limit: 3 subjects
+  if (!editId && subjects.length >= 3) {
+    closeModal('subject');
+    goTo('pricing');
+    toast('You\'ve hit the free limit — upgrade to add unlimited subjects 🚀', 'err');
+    return;
+  }
+  if (editId) {
+    const s=subjects.find(s=>s.id===editId); if(s){s.name=name;s.emoji=emoji;s.color=color;}
+    toast('Subject updated — looking good! ✅');
+  } else {
+    subjects.push({id:uid(),name,emoji,color});
+    toast('Subject added — let\'s get studying! 🎉');
+  }
+  closeModal('subject'); renderSubjects(); renderDashboard(); updateSidebarUsage();
+}
+function editSubject(id) {
+  const s=subjects.find(s=>s.id===id); if(!s)return;
+  document.getElementById('subj-edit-id').value=id;
+  document.getElementById('subj-name').value=s.name;
+  document.getElementById('subj-emoji').value=s.emoji||'';
+  document.getElementById('subj-color').value=s.color||'blue';
+  document.getElementById('modal-subject-ttl').textContent='Edit subject';
+  openModal('subject');
+}
+function deleteSubject(id) {
+  if(!confirm('Are you sure? This will also remove all topics and exams linked to this subject.')) return;
+  subjects=subjects.filter(s=>s.id!==id);
+  topics=topics.filter(t=>t.subjectId!==id);
+  exams=exams.filter(e=>e.subjectId!==id);
+  toast('Subject removed'); renderSubjects(); renderDashboard(); updateSidebarUsage();
+}
+
+/* ============================================================
+   TOPIC CRUD
+   Firebase: addDoc / updateDoc / deleteDoc on 'topics' collection
+   ============================================================ */
+function saveTopic() {
+  const name  = document.getElementById('topic-name').value.trim();
+  const subId = document.getElementById('topic-subj').value;
+  const hours = parseFloat(document.getElementById('topic-hours').value)||null;
+  const editId= document.getElementById('topic-edit-id').value;
+  if (!name)  { toast('What\'s the topic called?','err'); return; }
+  if (!subId) { toast('Which subject does this belong to?','err'); return; }
+  if (editId) {
+    const t=topics.find(t=>t.id===editId); if(t){t.name=name;t.subjectId=subId;t.hours=hours;}
+    toast('Topic updated ✅');
+  } else {
+    topics.push({id:uid(),name,subjectId:subId,hours,status:'pending'});
+    toast('Topic added — one step closer! 📝');
+  }
+  closeModal('topic'); renderTopics(); renderDashboard();
+}
+function editTopic(id) {
+  const t=topics.find(t=>t.id===id); if(!t)return;
+  document.getElementById('topic-edit-id').value=id;
+  document.getElementById('topic-name').value=t.name;
+  document.getElementById('topic-hours').value=t.hours||'';
+  document.getElementById('modal-topic-ttl').textContent='Edit topic';
+  openModal('topic');
+  setTimeout(()=>{ document.getElementById('topic-subj').value=t.subjectId; },30);
+}
+function deleteTopic(id) {
+  if(!confirm('Remove this topic? You can always add it back later.')) return;
+  topics=topics.filter(t=>t.id!==id);
+  toast('Topic removed'); renderTopics(); renderDashboard();
+}
+
+/* ============================================================
+   EXAM CRUD
+   Firebase: addDoc / updateDoc / deleteDoc on 'exams' collection
+   ============================================================ */
+function saveExam() {
+  const name  = document.getElementById('exam-name').value.trim();
+  const subId = document.getElementById('exam-subj').value;
+  const date  = document.getElementById('exam-date').value;
+  const editId= document.getElementById('exam-edit-id').value;
+  if (!name)  { toast('What\'s the exam called?','err'); return; }
+  if (!subId) { toast('Which subject is this for?','err'); return; }
+  if (!date)  { toast('Don\'t forget to pick a date!','err'); return; }
+  if (editId) {
+    const e=exams.find(e=>e.id===editId); if(e){e.name=name;e.subjectId=subId;e.date=date;}
+    toast('Exam updated — you\'re on top of it ✅');
+  } else {
+    exams.push({id:uid(),name,subjectId:subId,date});
+    toast('Exam added — now you know what you\'re working towards 📅');
+  }
+  closeModal('exam'); renderExams(); renderDashboard();
+}
+function editExam(id) {
+  const e=exams.find(e=>e.id===id); if(!e)return;
+  document.getElementById('exam-edit-id').value=id;
+  document.getElementById('exam-name').value=e.name;
+  document.getElementById('exam-date').value=e.date;
+  document.getElementById('modal-exam-ttl').textContent='Edit exam';
+  openModal('exam');
+  setTimeout(()=>{ document.getElementById('exam-subj').value=e.subjectId; },30);
+}
+function deleteExam(id) {
+  if(!confirm('Remove this exam from your planner?')) return;
+  exams=exams.filter(e=>e.id!==id);
+  toast('Exam removed'); renderExams(); renderDashboard();
+}
+
+/* ============================================================
+   UTILS
+   ============================================================ */
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+let _t;
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='show '+type;
+  clearTimeout(_t); _t=setTimeout(()=>el.className='',3500);
+}
+
+/* ============================================================
+   EXPOSE ALL FUNCTIONS CALLED FROM onclick= ATTRIBUTES
+   This fixes "ReferenceError: X is not defined" errors
+   ============================================================ */
+window.enterApp        = enterApp;
+window.goTo            = goTo;
+window.openSidebar     = openSidebar;
+window.closeSidebar    = closeSidebar;
+window.toggleBilling   = toggleBilling;
+window.toggleBillingApp= toggleBillingApp;
+window.openCheckout    = openCheckout;
+window.closeModal      = closeModal;
+window.openModal       = openModal;
+window.saveSubject     = saveSubject;
+window.editSubject     = editSubject;
+window.deleteSubject   = deleteSubject;
+window.saveTopic       = saveTopic;
+window.editTopic       = editTopic;
+window.deleteTopic     = deleteTopic;
+window.toggleTopic     = toggleTopic;
+window.saveExam        = saveExam;
+window.editExam        = editExam;
+window.deleteExam      = deleteExam;
+window.setTopicFilter  = setTopicFilter;
+
+/* Boot — show landing page only, hide app until user clicks in */
+document.getElementById('sidebar').style.display  = 'none';
+document.getElementById('ham').style.display      = 'none';
+
+</script>
+</body>
+</html>
