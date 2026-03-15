@@ -1147,9 +1147,8 @@ body.dark-mode .dark-toggle-row { background:#1e2d45; }
     <span class="nav-icon">👥</span> Study Groups
     <span class="pro-lock" style="margin-left:auto;">PRO</span>
   </button>
-  <button class="nav-item" id="nav-ai" onclick="goToProPage('ai')">
+  <button class="nav-item" id="nav-ai" onclick="goTo('ai')">
     <span class="nav-icon">✨</span> AI Scheduler
-    <span class="pro-lock" style="margin-left:auto;">PRO</span>
   </button>
 
   <div class="nav-label" style="margin-top:16px;">Account</div>
@@ -2445,13 +2444,6 @@ function saveSubject() {
   const color = document.getElementById('subj-color').value;
   const editId= document.getElementById('subj-edit-id').value;
   if (!name) { toast('What are you studying? Give the subject a name.','err'); return; }
-  // Free plan limit: 3 subjects
-  if (!editId && subjects.length >= 3) {
-    closeModal('subject');
-    goTo('pricing');
-    toast('You\'ve hit the free limit — upgrade to add unlimited subjects 🚀', 'err');
-    return;
-  }
   if (editId) {
     const s=subjects.find(s=>s.id===editId); if(s){s.name=name;s.emoji=emoji;s.color=color;}
     toast('Subject updated — looking good! ✅');
@@ -2489,13 +2481,6 @@ function saveTopic() {
   const editId= document.getElementById('topic-edit-id').value;
   if (!name)  { toast('What\'s the topic called?','err'); return; }
   if (!subId) { toast('Which subject does this belong to?','err'); return; }
-  // Free plan limit: 10 topics
-  if (!editId && topics.length >= 10) {
-    closeModal('topic');
-    goTo('pricing');
-    toast('You\'ve hit the free limit — upgrade to add unlimited topics 🚀','err');
-    return;
-  }
   if (editId) {
     const t=topics.find(t=>t.id===editId); if(t){t.name=name;t.subjectId=subId;t.hours=hours;}
     toast('Topic updated ✅');
@@ -2532,13 +2517,6 @@ function saveExam() {
   if (!name)  { toast('What\'s the exam called?','err'); return; }
   if (!subId) { toast('Which subject is this for?','err'); return; }
   if (!date)  { toast('Don\'t forget to pick a date!','err'); return; }
-  // Free plan limit: 3 exams
-  if (!editId && exams.length >= 3) {
-    closeModal('exam');
-    goTo('pricing');
-    toast('You\'ve hit the free limit — upgrade to add unlimited exams 🚀','err');
-    return;
-  }
   if (editId) {
     const e=exams.find(e=>e.id===editId); if(e){e.name=name;e.subjectId=subId;e.date=date;}
     toast('Exam updated — you\'re on top of it ✅');
