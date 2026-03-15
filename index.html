@@ -822,15 +822,45 @@ body.dark-mode {
   --border:   #1e2d45;
   --text:     #f1f5f9;
   --text-muted:#94a3b8;
-  --sidebar-bg:#0d1526;
+  --sidebar-bg:#ffffff;
 }
+body.dark-mode #landing {
+  background:#0b1629;
+}
+body.dark-mode .modal { background:#111827; }
+body.dark-mode .modal-header { border-color:#1e2d45; }
+body.dark-mode .modal-close { background:#1e2d45; color:#94a3b8; }
+body.dark-mode .plan-card { background:#111827; border-color:#1e2d45; }
 body.dark-mode .field input,
-body.dark-mode .field select { background:#1e2d45; color:#f1f5f9; border-color:#1e2d45; }
+body.dark-mode .field select { background:#1e2d45; color:#f1f5f9; border-color:#2d3f5a; }
 body.dark-mode .task-item,
-body.dark-mode .topic-row,
-body.dark-mode .subject-card-bot { background:#111827; }
-body.dark-mode .filter-btn { background:#111827; color:#94a3b8; }
-body.dark-mode .plan-card { background:#111827; }
+body.dark-mode .topic-row { background:#111827; border-color:#1e2d45; }
+body.dark-mode .subject-card-bot { background:#0f1929; }
+body.dark-mode .filter-btn { background:#111827; color:#94a3b8; border-color:#1e2d45; }
+body.dark-mode .checkout-stripe-note { background:#1e2d45; border-color:#2d3f5a; }
+body.dark-mode .exam-card { background:#111827; border-color:#1e2d45; }
+body.dark-mode .goal-card { background:#111827; border-color:#1e2d45; }
+body.dark-mode .group-card { background:#111827; border-color:#1e2d45; }
+body.dark-mode .chart-card { background:#111827; border-color:#1e2d45; }
+body.dark-mode .card { background:#111827; border-color:#1e2d45; }
+body.dark-mode .stat-card { background:#111827; border-color:#1e2d45; }
+body.dark-mode .pro-badge-sidebar { background:rgba(79,142,247,.08); border-color:rgba(79,142,247,.2); }
+body.dark-mode .dark-toggle-row { background:#1e2d45; }
+body.dark-mode .sidebar-user { background:#1a2a42; }
+body.dark-mode .progress-track,
+body.dark-mode .bar-track,
+body.dark-mode .mini-track,
+body.dark-mode .goal-mini-bar,
+body.dark-mode .pro-badge-bar-track { background:#1e2d45; }
+body.dark-mode .section-heading { color:#64748b; }
+body.dark-mode .section-heading::after { background:#1e2d45; }
+body.dark-mode .field label { color:#64748b; }
+body.dark-mode .btn-ghost { background:#1e2d45; border-color:#2d3f5a; color:#94a3b8; }
+body.dark-mode .ai-banner { background:linear-gradient(135deg,#1a1535,#111827); border-color:#4c1d95; }
+body.dark-mode .upgrade-nudge { background:linear-gradient(135deg,#0f1e3d,#0a1628); }
+body.dark-mode .pro-gate-banner { background:linear-gradient(135deg,#1a1535,#111827); border-color:#4c1d95; }
+body.dark-mode .pro-gate-banner .pgb-title { color:#a78bfa; }
+body.dark-mode .pro-gate-banner .pgb-text  { color:#7c3aed; }
 
 /* Dark mode toggle in sidebar */
 .dark-toggle-row {
@@ -2325,7 +2355,9 @@ window.goToProPage     = goToProPage;
 window.toggleDarkMode  = toggleDarkMode;
 window.deleteGoal      = deleteGoal;
 
-/* Boot — show landing page only, hide app until user clicks in */
+/* Boot — dark mode on by default, show landing only */
+document.body.classList.add('dark-mode');
+document.getElementById('dark-toggle').classList.add('on');
 document.getElementById('sidebar').style.display  = 'none';
 document.getElementById('ham').style.display      = 'none';
 
