@@ -1871,16 +1871,39 @@ function updateAIDataSummary() {
   const pending  = topics.filter(t => t.status !== 'completed');
   const today    = new Date(); today.setHours(0,0,0,0);
   const upcoming = exams.filter(e => new Date(e.date) >= today);
-  el.textContent = `Using ${subjects.length} subject${subjects.length!==1?'s':''}, ${pending.length} pending topic${pending.length!==1?'s':''}, ${upcoming.length} upcoming exam${upcoming.length!==1?'s':''}`;
+  const daysEl   = document.getElementById('ai-days-per-week');
+  const lenEl    = document.getElementById('ai-plan-length');
+  const weeksMap = { '1 week':1, '2 weeks':2, '4 weeks':4, 'until my exams':4 };
+  const weeks    = daysEl && lenEl ? weeksMap[lenEl.value]||2 : 2;
+  const days     = daysEl ? parseInt(daysEl.value)*weeks : 10;
+  el.textContent = `${subjects.length} subject${subjects.length!==1?'s':''} · ${pending.length} pending topic${pending.length!==1?'s':''} · ${upcoming.length} exam${upcoming.length!==1?'s':''} · ${days}-day plan`;
 }
 
 function buildPrompt() {
-  const daysPerWeek = document.getElementById('ai-days-per-week').value;
+  const daysPerWeek = parseInt(document.getElementById('ai-days-per-week').value);
   const hoursPerDay = document.getElementById('ai-hours-per-day').value;
   const planLength  = document.getElementById('ai-plan-length').value;
   const focusStyle  = document.getElementById('ai-focus-style').value;
   const today       = new Date();
   const todayStr    = today.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+  // Calculate exact number of days — full calendar weeks (7 days each)
+  const weeksMap  = { '1 week':1, '2 weeks':2, '4 weeks':4, 'until my exams':4 };
+  const numWeeks  = weeksMap[planLength] || 2;
+  const totalDays = numWeeks * 7; // full 7-day weeks so every day Mon-Sun is included
+
+  // Generate study dates — consecutive days starting tomorrow, totalDays count
+  // This gives Mon/Tue/Wed/Thu/Fri/Sat/Sun all included
+  const studyDates = [];
+  const d = new Date(today);
+  d.setDate(d.getDate() + 1); // start tomorrow
+  for (let i = 0; i < totalDays; i++) {
+    studyDates.push(new Date(d));
+    d.setDate(d.getDate() + 1);
+  }
+  const dateList = studyDates.map((sd, i) =>
+    `DAY ${i+1} - ${sd.toLocaleDateString('en-GB')} - ${sd.toLocaleDateString('en-GB',{weekday:'long'})}`
+  ).join('\n');
 
   const subjectSummary = subjects.map(s => {
     const subTopics  = topics.filter(t => t.subjectId === s.id);
@@ -1890,38 +1913,55 @@ function buildPrompt() {
     const subExams   = exams.filter(e => e.subjectId===s.id && new Date(e.date)>=today)
       .map(e => `${e.name} on ${e.date}`).join(', ');
     return `Subject: ${s.name}
-  - Pending topics (${pending.length}): ${pending.map(t=>`${t.name} (~${t.hours||1}h)`).join(', ')||'none'}
-  - Completed (${done.length}): ${done.map(t=>t.name).join(', ')||'none'}
+  - Pending topics: ${pending.map(t=>`${t.name} (~${t.hours||1}h)`).join(', ')||'none'}
+  - Completed: ${done.map(t=>t.name).join(', ')||'none'}
   - Hours remaining: ~${totalHours}h
   - Upcoming exams: ${subExams||'none'}`;
   }).join('\n\n');
 
-  return `You are an expert academic study planner. Today is ${todayStr}.
+  return `You are a study planner. Today is ${todayStr}.
 
-Student's study data:
+STUDENT DATA:
 ${subjectSummary}
 
-Plan preferences:
-- Study days per week: ${daysPerWeek}
-- Hours per day: ${hoursPerDay}
-- Plan length: ${planLength}
-- Focus style: ${focusStyle}
+SETTINGS:
+- ${hoursPerDay} hours of study per day
+- Total days to plan: ${totalDays} days (${numWeeks} week${numWeeks>1?'s':''})
+- Focus: ${focusStyle}
 
-Instructions:
-1. Create a day-by-day schedule starting tomorrow
-2. Each day lists specific topics with estimated time
-3. Only include pending topics — skip completed ones
-4. Rotate subjects so the same one isn't repeated every day
-5. Ramp up intensity the week before each exam
-6. Keep the tone warm and encouraging
-7. Use EXACTLY this format for each day:
+HERE ARE THE EXACT ${totalDays} DAYS YOU MUST FILL IN — one entry per day, no skipping:
+${dateList}
 
-DAY 1 - [DD/MM/YYYY] - [Day name]
+CRITICAL INSTRUCTIONS:
+- You MUST generate ALL ${totalDays} days listed above — do not stop early
+- Use the exact day headers listed above (DAY 1, DAY 2... DAY ${totalDays})
+- Start your response immediately with "DAY 1" — no intro text
+
+Use EXACTLY this format:
+
+DAY 1 - [date] - [weekday]
 • [Subject]: [Topic] — [X mins]
 • [Subject]: [Topic] — [X mins]
-Total: [X hours X mins]
+Total: [X hrs X mins]
 
-End with 2-3 sentences of motivation.`;
+DAY 2 - [date] - [weekday]
+• [Subject]: [Topic] — [X mins]
+Total: [X hrs X mins]
+
+...continue for ALL ${totalDays} days...
+
+MOTIVATION: [2-3 encouraging sentences here]
+
+Rules:
+- CRITICAL: Generate ALL ${totalDays} days — do not stop before DAY ${totalDays}
+- Only include pending topics, never completed ones
+- NEVER repeat the same topic on consecutive days
+- Every subject must appear across the plan
+- Rotate subjects every day — mix them up
+- Each day should have topics from at least 2 different subjects where possible
+- Split long topics across multiple days rather than repeating them in full
+- Ramp up intensity in the week before any exam
+- Every day must have a Total line`;
 }
 
 async function generateStudyPlan() {
@@ -1942,20 +1982,16 @@ async function generateStudyPlan() {
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': key
+        },
         body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: buildPrompt()
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2000,
-          }
+          contents: [{ parts: [{ text: buildPrompt() }] }],
+          generationConfig: { temperature: 1.0, maxOutputTokens: 4000 }
         })
       }
     );
@@ -1969,12 +2005,13 @@ async function generateStudyPlan() {
     let msg = err.message;
     if (msg.includes('401')||msg.includes('API_KEY_INVALID')) msg='Invalid Gemini key — check and re-save it.';
     else if (msg.includes('429')) msg='Rate limit hit — wait a moment and try again.';
-    else if (msg.includes('quota')) msg='Your Gemini quota has run out. Try again tomorrow or check aistudio.google.com.';
-    else if (msg.includes('fetch')) msg='Could not connect — make sure you\'re on a hosted URL, not a local file.';
+    else if (msg.includes('fetch')||msg.includes('Failed to fetch')||msg.includes('NetworkError')) msg='Could not connect — make sure you\'re on a hosted URL (Netlify/Live Server), not a local file.';
+    // Show the REAL error so we can diagnose it
     output.innerHTML = `<div class="card" style="border:1.5px solid var(--red);padding:24px;">
       <div style="font-size:1.2rem;margin-bottom:8px;">⚠️</div>
       <div style="font-weight:700;color:var(--red);margin-bottom:6px;">Something went wrong</div>
-      <div style="font-size:.85rem;color:var(--text-muted);">${esc(msg)}</div>
+      <div style="font-size:.85rem;color:var(--text-muted);margin-bottom:10px;">${esc(msg)}</div>
+      <div style="font-size:.75rem;color:#94a3b8;padding:10px;background:var(--bg);border-radius:8px;word-break:break-all;">Raw: ${esc(err.message)}</div>
     </div>`;
     toast(msg, 'err');
   } finally {
@@ -1986,41 +2023,54 @@ async function generateStudyPlan() {
 function renderAIPlan(text) {
   const output = document.getElementById('ai-output');
   const colors = ['#4f8ef7','#10b981','#f59e0b','#8b5cf6','#ef4444','#14b8a6'];
-  const days   = text.split(/(?=DAY \d+ -)/).filter(d => d.trim().startsWith('DAY'));
+
+  // Strip any intro text before the first DAY block
+  const firstDay = text.indexOf('DAY 1');
+  const cleanText = firstDay > -1 ? text.slice(firstDay) : text;
+
+  // Extract motivation (after MOTIVATION: label or after last Total: line)
+  let motivation = '';
+  const motivMatch = cleanText.match(/MOTIVATION:\s*([\s\S]+?)$/i);
+  if (motivMatch) motivation = motivMatch[1].trim();
+
+  // Split into day blocks
+  const days = cleanText.split(/(?=DAY \d+ -)/).filter(d => d.trim().match(/^DAY \d+/));
 
   if (days.length > 0) {
     let html = '<div style="display:flex;flex-direction:column;gap:14px;">';
+
     days.forEach((day, i) => {
       const lines  = day.trim().split('\n');
-      const header = lines[0].replace(/^DAY \d+ - /,'');
-      const items  = lines.slice(1).filter(l => l.trim().startsWith('•'));
+      const header = lines[0].replace(/^DAY \d+ - /,'').replace(/MOTIVATION:.*/i,'').trim();
+      const items  = lines.slice(1).filter(l => l.trim().startsWith('•') || l.trim().startsWith('-'));
       const total  = lines.find(l => l.toLowerCase().startsWith('total'));
       const color  = colors[i % colors.length];
+
+      if (!header || items.length === 0) return; // skip empty blocks
+
       html += `<div class="card" style="border-left:4px solid ${color};padding:18px 22px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
           <div style="font-weight:700;font-size:.95rem;">📅 ${esc(header)}</div>
-          ${total?`<span style="font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:999px;background:${color}22;color:${color};">${esc(total.replace(/total:/i,'').trim())}</span>`:''}
+          ${total ? `<span style="font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:999px;background:${color}22;color:${color};">${esc(total.replace(/total:/i,'').trim())}</span>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;gap:7px;">
           ${items.map(item => {
-            const clean = item.replace('•','').trim();
+            const clean = item.replace(/^[•\-]\s*/,'').trim();
             const parts = clean.split('—');
             return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:8px;gap:10px;">
               <span style="font-size:.87rem;">${esc(parts[0]?.trim()||clean)}</span>
-              ${parts[1]?`<span style="font-size:.75rem;font-weight:600;color:var(--text-muted);flex-shrink:0;">${esc(parts[1].trim())}</span>`:''}
+              ${parts[1] ? `<span style="font-size:.75rem;font-weight:600;color:var(--text-muted);flex-shrink:0;">${esc(parts[1].trim())}</span>` : ''}
             </div>`;
           }).join('')}
         </div>
       </div>`;
     });
 
-    // Motivational summary (text after last day block)
-    const afterDays = text.split(/DAY \d+ -[^\n]+\n/).pop()?.trim() || '';
-    const summary   = afterDays.split('\n').filter(l => !l.startsWith('•') && !l.toLowerCase().startsWith('total') && l.trim()).join(' ');
-    if (summary) {
+    // Motivation card
+    if (motivation) {
       html += `<div class="card" style="background:linear-gradient(135deg,rgba(79,142,247,.1),rgba(139,92,246,.1));border:1.5px solid rgba(79,142,247,.25);text-align:center;padding:24px;">
         <div style="font-size:1.5rem;margin-bottom:8px;">🌟</div>
-        <div style="font-size:.9rem;line-height:1.7;">${esc(summary)}</div>
+        <div style="font-size:.9rem;line-height:1.7;">${esc(motivation)}</div>
       </div>`;
     }
 
@@ -2028,9 +2078,11 @@ function renderAIPlan(text) {
       <button class="btn btn-primary" onclick="generateStudyPlan()" style="font-size:.83rem;">↺ Regenerate plan</button>
       <button class="btn btn-ghost" onclick="copyPlan()" style="font-size:.83rem;">📋 Copy to clipboard</button>
     </div></div>`;
+
     output.innerHTML = html;
   } else {
-    output.innerHTML = `<div class="card" style="white-space:pre-wrap;font-size:.88rem;line-height:1.8;">${esc(text)}</div>
+    // Fallback — show raw text in a readable card
+    output.innerHTML = `<div class="card" style="white-space:pre-wrap;font-size:.88rem;line-height:1.8;font-family:var(--font);">${esc(text)}</div>
     <div style="margin-top:14px;display:flex;gap:10px;">
       <button class="btn btn-primary" onclick="generateStudyPlan()">↺ Regenerate</button>
       <button class="btn btn-ghost" onclick="copyPlan()">📋 Copy</button>
